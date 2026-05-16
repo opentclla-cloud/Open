@@ -1,0 +1,1420 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tennis Live Score</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;0,900;1,400&family=Crimson+Pro:wght@300;400;600&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.4.120/build/pdf.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --clay:#c45c26;--clay-h:#a84818;--clay-pale:#f5dece;
+  --sand:#e8c9a0;--sand-l:#f5ede0;--sand-d:#c9a870;
+  --cream:#faf6f0;--white:#fff;
+  --dark:#1a0f08;--dark2:#2d1f14;--dark3:#3d2a18;
+  --green:#2d7a4f;--green-l:#e6f4ed;
+  --gold:#c9a227;--gold-l:#fdf3d0;
+  --red:#b42828;
+  --txt:#1a0f08;--txt-m:#7a6355;--txt-l:#b09880;
+  --bdr:#d8c4ac;--bdr-l:#ece0d0;
+  --shd:0 2px 16px rgba(80,40,10,.10);
+  --r:4px;--rl:8px;
+  --fd:'Playfair Display',Georgia,serif;
+  --fb:'Crimson Pro',Georgia,serif;
+}
+html,body{font-family:var(--fb);background:var(--cream);color:var(--txt);min-height:100vh;font-size:16px;line-height:1.5}
+button{cursor:pointer;font-family:var(--fb)}input,select,textarea{font-family:var(--fb)}
+a{color:var(--clay)}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:var(--r);border:1px solid var(--bdr);background:var(--white);color:var(--txt);font-size:15px;cursor:pointer;transition:all .15s;white-space:nowrap;text-decoration:none}
+.btn:hover{background:var(--sand-l)}
+.btn-p{background:var(--clay);color:#fff;border-color:var(--clay-h)}.btn-p:hover{background:var(--clay-h)}
+.btn-dk{background:var(--dark);color:var(--sand-l);border-color:var(--dark2)}.btn-dk:hover{background:var(--dark2)}
+.btn-g{background:var(--green);color:#fff;border-color:#1d6040}
+.btn-sm{padding:5px 12px;font-size:13px}
+.btn-xs{padding:3px 8px;font-size:12px}
+.btn-ghost{background:none;border-color:transparent;color:var(--txt-m)}.btn-ghost:hover{background:var(--sand-l);color:var(--txt)}
+.card{background:var(--white);border:1px solid var(--bdr-l);border-radius:var(--rl);padding:18px;box-shadow:var(--shd)}
+.inp{padding:9px 12px;border-radius:var(--r);border:1px solid var(--bdr);background:var(--white);color:var(--txt);font-size:15px;width:100%;transition:border-color .15s}
+.inp:focus{outline:none;border-color:var(--clay)}
+select.inp{cursor:pointer}
+.lbl{font-size:11px;font-weight:600;letter-spacing:.8px;text-transform:uppercase;color:var(--txt-m);display:block;margin-bottom:5px}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+.flex{display:flex}.ai{align-items:center}.jb{justify-content:space-between}.je{justify-content:flex-end}
+.gap2{gap:8px}.gap3{gap:12px}
+.mb2{margin-bottom:8px}.mb3{margin-bottom:14px}.mb4{margin-bottom:20px}
+.ml-a{margin-left:auto}
+h1{font-family:var(--fd);font-size:22px;font-weight:700}
+h2{font-family:var(--fd);font-size:18px;font-weight:700}
+h3{font-family:var(--fd);font-size:15px;font-weight:600}
+.sep{height:1px;background:var(--bdr-l);margin:14px 0}
+.badge{display:inline-flex;align-items:center;gap:4px;padding:2px 9px;border-radius:20px;font-size:11px;font-weight:600;letter-spacing:.4px;text-transform:uppercase}
+.b-live{background:rgba(180,40,40,.1);color:var(--red);border:1px solid rgba(180,40,40,.2)}
+.b-pend{background:var(--sand-l);color:var(--txt-l);border:1px solid var(--bdr-l)}
+.b-done{background:var(--green-l);color:var(--green);border:1px solid rgba(45,122,79,.2)}
+.b-info{background:var(--gold-l);color:#7a5800;border:1px solid rgba(201,162,39,.3)}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--red);animation:dp 1.4s infinite;flex-shrink:0}
+@keyframes dp{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(.7)}}
+/* Shell */
+.shell{display:flex;flex-direction:column;min-height:100vh}
+.topbar{background:var(--dark);color:var(--sand-l);padding:0 24px;height:54px;display:flex;align-items:center;gap:14px;border-bottom:2px solid var(--clay);flex-shrink:0;flex-wrap:wrap}
+.topbar-title{font-family:var(--fd);font-size:17px;font-weight:700;color:var(--sand)}
+.tabbar{background:var(--dark2);display:flex;padding:0 24px;border-bottom:1px solid var(--dark3);flex-shrink:0;overflow-x:auto}
+.tabbtn{padding:13px 18px;border:none;background:none;color:var(--txt-l);font-family:var(--fb);font-size:14px;cursor:pointer;border-bottom:2px solid transparent;transition:all .2s;white-space:nowrap}
+.tabbtn.on{color:var(--sand);border-bottom-color:var(--clay)}
+.page{flex:1;padding:24px;max-width:1140px;width:100%;margin:0 auto}
+/* Match rows */
+.mrow{background:var(--white);border:1px solid var(--bdr-l);border-radius:var(--rl);overflow:hidden;transition:box-shadow .2s;margin-bottom:10px}
+.mrow:hover{box-shadow:var(--shd)}
+.mrow-head{padding:8px 14px;display:flex;align-items:center;gap:8px;background:var(--sand-l);border-bottom:1px solid var(--bdr-l);flex-wrap:wrap}
+.mrow-body{padding:10px 14px}
+.mrow-foot{padding:7px 14px;border-top:1px solid var(--bdr-l);display:flex;gap:7px;flex-wrap:wrap;background:var(--cream)}
+/* Score rows */
+.srow{display:flex;align-items:center;padding:7px 0;border-bottom:1px solid var(--bdr-l)}
+.srow:last-child{border-bottom:none;padding-top:8px}
+.sname{flex:1;font-size:15px;font-weight:600;font-family:var(--fd);display:flex;align-items:center;gap:5px}
+.ssets{display:flex;gap:8px;margin-right:10px}
+.sset{width:24px;text-align:center;font-size:14px;font-weight:700;color:var(--txt-l)}
+.sset.w{color:var(--clay)}
+.swon{min-width:28px;text-align:center;font-size:17px;font-weight:900;font-family:var(--fd);color:var(--dark)}
+/* Scorer match selector */
+.msel-btn{padding:10px 14px;border-radius:var(--r);cursor:pointer;text-align:left;transition:all .15s;font-family:var(--fb);width:100%;display:block}
+/* Modals */
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;z-index:900;padding:16px;backdrop-filter:blur(3px)}
+.modal{background:var(--white);border:1px solid var(--bdr);border-radius:var(--rl);padding:24px;width:100%;max-width:580px;max-height:92vh;overflow-y:auto;box-shadow:0 8px 32px rgba(0,0,0,.2)}
+.info-box{background:var(--green-l);border:1px solid rgba(45,122,79,.2);border-radius:var(--r);padding:10px 14px;font-size:13px;color:#1d5e38;margin-bottom:12px;line-height:1.5}
+.warn-box{background:#fff8e1;border:1px solid #ffe082;border-radius:var(--r);padding:10px 14px;font-size:13px;color:#6d4c00;margin-bottom:12px;line-height:1.5}
+.err-box{background:rgba(180,40,40,.07);border:1px solid rgba(180,40,40,.2);border-radius:var(--r);padding:10px 14px;font-size:13px;color:var(--red);margin-bottom:12px}
+/* TV */
+.tv-wrap{min-height:100vh;display:flex;flex-direction:column;font-family:var(--fd);position:relative;overflow:hidden}
+.tv-body{position:relative;z-index:1;display:flex;flex-direction:column;min-height:100vh}
+.tv-hdr{padding:18px 40px;display:flex;align-items:center;justify-content:space-between;border-bottom:2px solid rgba(255,255,255,.12);background:rgba(0,0,0,.4);flex-shrink:0}
+.tv-content{flex:1;display:grid;grid-template-columns:290px 1fr;overflow:hidden;min-height:0}
+.tv-sidebar{border-right:1px solid rgba(255,255,255,.12);overflow-y:auto;background:rgba(0,0,0,.3);padding:8px 0}
+.tv-sb-label{font-size:9px;letter-spacing:3px;text-transform:uppercase;padding:6px 14px 8px;opacity:.5;font-family:var(--fb);border-bottom:1px solid rgba(255,255,255,.07);margin-bottom:4px}
+/* Sidebar item general */
+.tv-sb-item{padding:0;border-bottom:1px solid rgba(255,255,255,.07)}
+.tv-sb-item.is-live{background:rgba(255,255,255,.07)}
+/* Scoreboard table in sidebar */
+.tv-sb-table{width:100%;border-collapse:collapse;font-size:13px;table-layout:fixed}
+.tv-sb-table td{padding:5px 6px;vertical-align:middle;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tv-sb-name{font-weight:700;font-family:var(--fd)}
+.tv-sb-set{width:22px;text-align:center;font-weight:700;font-family:var(--fd);font-size:14px}
+.tv-sb-won{width:28px;text-align:center;font-weight:900;font-family:var(--fd);font-size:17px}
+.tv-main{padding:20px 24px;overflow-y:auto;display:flex;flex-direction:column}
+.tv-live-grid{display:grid;gap:16px;flex:1}
+.tv-live-1{grid-template-columns:1fr}
+.tv-live-2{grid-template-columns:1fr 1fr}
+/* Match card */
+.tv-card{border-radius:6px;overflow:hidden;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12)}
+.tv-card-hdr{padding:8px 20px;display:flex;align-items:center;gap:10px;background:rgba(0,0,0,.35);font-family:var(--fb);font-size:12px;letter-spacing:1px;text-transform:uppercase;border-bottom:1px solid rgba(255,255,255,.1)}
+.tv-prow{display:flex;align-items:center;padding:14px 20px;border-bottom:1px solid rgba(255,255,255,.07)}
+.tv-prow:last-of-type{border-bottom:none}
+.tv-serve{width:12px;height:12px;border-radius:50%;margin-right:12px;flex-shrink:0;transition:all .3s}
+.tv-pname{flex:1;line-height:1.2}
+.tv-psets{display:flex;gap:10px;margin-right:14px}
+.tv-pset{font-size:clamp(18px,2.6vw,28px);font-weight:700;width:32px;text-align:center;opacity:.3}
+.tv-pset.w{opacity:1}
+.tv-pgame{min-width:54px;text-align:center;font-size:clamp(20px,2.8vw,30px);font-weight:900;border-radius:4px;padding:4px 10px}
+.tv-swon{min-width:42px;text-align:center;font-size:clamp(26px,3.5vw,40px);font-weight:900;opacity:.25}
+.tv-swon.lead{opacity:1}
+.tv-card-foot{padding:8px 20px;border-top:1px solid rgba(255,255,255,.08);display:flex;gap:12px;align-items:center;font-family:var(--fb);font-size:13px;opacity:.55}
+.tv-ftr{padding:10px 40px;border-top:1px solid rgba(255,255,255,.1);display:flex;align-items:center;gap:16px;min-height:52px;background:rgba(0,0,0,.35);flex-shrink:0;flex-wrap:wrap}
+.tv-empty{display:flex;flex-direction:column;align-items:center;justify-content:center;flex:1;gap:12px;opacity:.35;padding:40px}
+/* History */
+.hist-wrap{max-width:900px;margin:0 auto;padding:28px 24px}
+.cmt-item{display:flex;gap:10px;padding:10px 0;border-bottom:1px solid var(--bdr-l)}
+.cmt-avatar{width:32px;height:32px;border-radius:50%;object-fit:cover;flex-shrink:0}
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--bdr);border-radius:3px}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useEffect, useRef, useCallback, useMemo } = React;
+
+// ── Constantes ─────────────────────────────────────────────────
+const BASE_FORMATS = {
+  bo3:     { sets:3, finalSuper:false, tbOnly:false },
+  bo5:     { sets:5, finalSuper:false, tbOnly:false },
+  doubles: { sets:3, finalSuper:true,  tbOnly:false, noAd:true },
+  super_tb:{ sets:1, finalSuper:false, tbOnly:true  },
+};
+const DEFAULT_FORMAT_LABELS = {
+  bo3:'Bo3 avec tie-break', bo5:'Bo5 avec tie-break',
+  doubles:'Doubles (Bo3 sans avantage + super TB)', super_tb:'Super Tie-break (10 pts)',
+};
+const DEFAULT_CATS = ['SM Senior','SM Vétérans 35+','SM 45 ans','SD Senior','DM Senior','DD Senior','MX Senior','U18','U14'];
+const DEFAULT_SETTINGS = {
+  tournamentName:'Tournoi de Tennis', clubName:'Tennis Club',
+  clubLogo:'', bgColor:'#0d1117', bgImage:'',
+  primaryColor:'#ff6b1a', textColor:'#ffffff', accentColor:'#ffd700',
+  sponsors:[], sponsorInterval:10, scrollMode:'scroll',
+  categories:[...DEFAULT_CATS], formatLabels:{...DEFAULT_FORMAT_LABELS},
+};
+const DEFAULT_DATA = { matches:[], settings:DEFAULT_SETTINGS };
+
+// ── Utilitaires ─────────────────────────────────────────────────
+const todayStr = () => new Date().toISOString().split('T')[0];
+const deepCopy  = o => JSON.parse(JSON.stringify(o));
+const fmtDur    = ms => { if(!ms||ms<0)return''; const m=Math.floor(ms/60000),h=Math.floor(m/60),mm=m%60; return h>0?`${h}h${String(mm).padStart(2,'0')}`:`${m}'`; };
+const fmtDateFR = d => { try{ return new Date(d+'T12:00:00').toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long',year:'numeric'}); }catch(e){return d;} };
+const scoreText = m => m.sets.map(s=>`${s[0]}-${s[1]}`).join(' ');
+const getFmt    = (m,s) => ({ ...BASE_FORMATS[m.format]||BASE_FORMATS.bo3, label:(s?.formatLabels?.[m.format])||DEFAULT_FORMAT_LABELS[m.format]||m.format });
+// Pour la logique interne (addGame, recalcWinner) – compte tout set où un joueur mène
+const countSW   = sets => sets.reduce((a,s)=>{ if(s[0]>s[1])a[0]++; else if(s[1]>s[0])a[1]++; return a; },[0,0]);
+// Pour l'affichage – compte uniquement les sets effectivement terminés
+const countWonSets = match => match.sets.reduce((a,s,i)=>{
+  const isLast = i===match.sets.length-1;
+  const done = checkSetWon(s) || (match.status==='finished' && isLast && s[0]!==s[1]);
+  if(done){ if(s[0]>s[1])a[0]++; else if(s[1]>s[0])a[1]++; }
+  return a;
+},[0,0]);
+const checkSetWon = ([a,b]) => { const mx=Math.max(a,b),mn=Math.min(a,b); return (mx>=6&&mx-mn>=2)||(mx===7&&mn===6); };
+const timeToMin = s => { if(!s)return 9999; const[h,m]=s.split(':').map(Number); return h*60+m; };
+
+// ── Stockage ────────────────────────────────────────────────────
+const IDB = {
+  open:()=>new Promise((r,j)=>{const q=indexedDB.open('tennis_v4',1);q.onupgradeneeded=e=>e.target.result.createObjectStore('kv',{keyPath:'k'});q.onsuccess=e=>r(e.target.result);q.onerror=()=>j(q.error)}),
+  async set(k,v){try{const db=await this.open();const tx=db.transaction('kv','readwrite');tx.objectStore('kv').put({k,v});await new Promise((r,j)=>{tx.oncomplete=r;tx.onerror=j})}catch(e){}},
+  async get(k){try{const db=await this.open();return new Promise((r,j)=>{const q=db.transaction('kv','readonly').objectStore('kv').get(k);q.onsuccess=()=>r(q.result?.v??null);q.onerror=()=>j(q.error)})}catch(e){return null}},
+};
+const ls = {
+  get:k=>{try{const r=localStorage.getItem(k);return r?JSON.parse(r):null}catch(e){return null}},
+  set:(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}
+};
+// ================================================================
+// CONFIG FIREBASE — À remplir une fois, voyagera avec le fichier
+// Copiez votre config depuis console.firebase.google.com
+// ⚙ Paramètres du projet → Vos applications → Web
+// ================================================================
+const FIREBASE_CONFIG_BUILTIN = {
+  apiKey:            "",   // "AIzaSyC6oQe_4I_Q1AnA9E_2grgDocR3yA4Viz8"
+  authDomain:        "",   // "open-270b9.firebaseapp.com"
+  databaseURL:       "",   // "https://open-270b9-default-rtdb.europe-west1.firebasedatabase.app"
+  projectId:         "",   // "open-270b9"
+  storageBucket:     "",   // "open-270b9.firebasestorage.app"
+  messagingSenderId: "",   // "193990499120"
+  appId:             "",   // "1:193990499120:web:0acc05bf1c2299e0f686f5"
+};
+// ================================================================
+
+const loadFBCfg = async()=>{
+  // Priorité : 1) config intégrée dans le fichier, 2) localStorage, 3) IDB
+  if(FIREBASE_CONFIG_BUILTIN.databaseURL) return FIREBASE_CONFIG_BUILTIN;
+  return ls.get('fb_cfg')||await IDB.get('fb_cfg');
+};
+const saveFBCfg = async c=>{ls.set('fb_cfg',c);await IDB.set('fb_cfg',c)};
+const loadData  = async()=>ls.get('app_data')||await IDB.get('app_data')||DEFAULT_DATA;
+const saveData  = async d=>{ls.set('app_data',d);await IDB.set('app_data',d)};
+
+// ── Firebase ────────────────────────────────────────────────────
+let _db=null, _auth=null;
+function initFB(cfg){
+  try{
+    if(!cfg?.databaseURL)return false;
+    if(firebase.apps.length)firebase.app().delete().catch(()=>{});
+    firebase.initializeApp(cfg);
+    _db=firebase.database(); _auth=firebase.auth();
+    return true;
+  }catch(e){console.error(e);return false;}
+}
+
+// ── Moteur de score (niveau jeu) ────────────────────────────────
+function newMatch(d){
+  return {
+    id:'M_'+Date.now()+'_'+(Math.random()*9999|0),
+    player1:d.player1||'Joueur 1', player2:d.player2||'Joueur 2',
+    p1Club:d.p1Club||'', p2Club:d.p2Club||'',
+    p1Ranking:d.p1Ranking||'', p2Ranking:d.p2Ranking||'',
+    category:d.category||'', round:d.round||'', court:d.court||'',
+    format:d.format||'bo3', status:'pending',
+    sets:[[0,0]], server:1, firstServer:1, winner:null,
+    scheduledTime:d.scheduledTime||'', startedAt:null, endedAt:null,
+    date:d.date||todayStr(), history:[], notes:d.notes||'', createdAt:Date.now()
+  };
+}
+
+function addGame(match, player, settings){
+  const m=deepCopy(match);
+  if(m.status!=='live')return m;
+  const fmt=getFmt(m,settings), pi=player-1, si=m.sets.length-1;
+  const isFinalSet=si===fmt.sets-1, isSuperTBFinal=fmt.finalSuper&&isFinalSet, isTBOnly=fmt.tbOnly;
+  m.history=[...(m.history||[]).slice(-40),deepCopy({sets:m.sets,server:m.server,status:m.status,winner:m.winner,endedAt:m.endedAt})];
+  m.sets[si][pi]++;
+  m.server=3-m.server;
+  const setWon=isSuperTBFinal||isTBOnly||checkSetWon(m.sets[si]);
+  if(setWon){
+    const sw=countSW(m.sets), needed=isTBOnly?1:Math.ceil(fmt.sets/2);
+    if(sw[pi]>=needed){m.status='finished';m.winner=player;m.endedAt=Date.now();}
+    else if(m.sets.length<fmt.sets)m.sets.push([0,0]);
+  }
+  return m;
+}
+
+function undoGame(match){
+  const m=deepCopy(match);
+  if(!m.history?.length)return m;
+  const prev=m.history[m.history.length-1];
+  m.history=m.history.slice(0,-1);
+  return {...m,...prev};
+}
+
+function recalcWinner(match,settings){
+  const m=deepCopy(match),fmt=getFmt(m,settings),sw=countSW(m.sets),needed=fmt.tbOnly?1:Math.ceil(fmt.sets/2);
+  if(sw[0]>=needed){m.winner=1;m.status='finished';}
+  else if(sw[1]>=needed){m.winner=2;m.status='finished';}
+  else{m.winner=null;m.status='live';}
+  return m;
+}
+
+// ── Parseur PDF (format FFT) ─────────────────────────────────────
+const MONTHS_FR={janvier:'01',février:'02',fevrier:'02',mars:'03',avril:'04',mai:'05',juin:'06',juillet:'07',août:'08',aout:'08',septembre:'09',octobre:'10',novembre:'11',décembre:'12',decembre:'12'};
+const RANK_RE=/^(\d+\/\d+|\d+|N\/C|NC)$/i;
+const TIME_RE=/^\d{1,2}:\d{2}$/;
+const CAT_RE=/^(SM|DM|SD|DD|MX|DH|DA)\b/i;
+
+function parsePDF(raw){
+  const lines=raw.split(/[\r\n]+/).map(l=>l.trim()).filter(Boolean);
+  let matchDate=todayStr();
+  for(const l of lines){const m=l.match(/(\d{1,2})\s+([\wéèêûôîàùæœ]+)\s+(\d{4})/i);if(m&&MONTHS_FR[m[2].toLowerCase()]){matchDate=`${m[3]}-${MONTHS_FR[m[2].toLowerCase()]}-${m[1].padStart(2,'0')}`;break;}}
+  const blocks=[];let cur=null;
+  for(const line of lines){
+    if(CAT_RE.test(line)){if(cur)blocks.push(cur);cur={catLine:line,body:[],time:null};}
+    else if(TIME_RE.test(line)){if(cur){blocks.push(cur);cur=null;}for(let i=blocks.length-1;i>=0;i--){if(blocks[i].time)break;blocks[i].time=line;}}
+    else if(cur)cur.body.push(line);
+  }
+  if(cur)blocks.push(cur);
+  return blocks.map(b=>parseBlock(b,matchDate)).filter(Boolean);
+}
+
+function parseBlock({catLine,body,time},matchDate){
+  const ct=catLine.match(/^(SM|DM|SD|DD|MX|DH|DA)\s*(.*)/i);
+  const catType=(ct?.[1]||'SM').toUpperCase(),catSuffix=(ct?.[2]||'').trim();
+  const isDoubles=/^(DM|DD|MX)/.test(catType);
+  const category=(catType+(catSuffix?' '+catSuffix:'')).trim();
+  const lines=[...body];
+  let round='';
+  if(lines.length>0&&(/finale|quart|semi|demi|\d+\s*à\s*\d+/i.test(lines[0])||/^\d+\/\d+\s+à\s+\d+\/\d+$/.test(lines[0])))round=lines.shift();
+  const full=lines.join(' ');
+  const vsPos=full.search(/\bvs\b/i);
+  const p1t=vsPos>=0?full.slice(0,vsPos).trim():full,p2t=vsPos>=0?full.slice(vsPos+2).trim():'';
+
+  // Mots-clés qui indiquent le début d'un nom de club
+  const CLUB_KW=/^(CLUB|TC|AS|US|STL|CSL|CERCLE|UNION|RACING|SPORTING|STADE|TENNIS|OMNISPORTS)$/;
+  // Mots de stade/tour à ignorer dans les noms
+  const ROUND_KW=/^(finale|demi|quart|semi|tour|poule)$/i;
+
+  const extr=txt=>{
+    // Supprimer les patterns de tour/stade embarqués ("1/8 finale", "1/4 de finale"…)
+    const cleaned=txt
+      .replace(/\d+\/\d+\s*(de\s+)?(finale|tour)/gi,' ')
+      .replace(/\b(demi|quart)\s*[-–]?\s*finale\b/gi,' ')
+      .trim();
+    const toks=cleaned.split(/\s+/).filter(Boolean);
+    const ranks=[],name=[],club=[];
+    let inClub=false;
+    for(const t of toks){
+      if(RANK_RE.test(t)){ranks.push(t);continue;}
+      if(ROUND_KW.test(t))continue; // ignorer les mots de stade résiduels
+      const isAllCaps=t===t.toUpperCase()&&t.length>1&&!/^\d/.test(t)&&!/[àâéèêëîïôùûü]/i.test(t);
+      if(inClub){club.push(t);continue;}
+      if(isAllCaps&&CLUB_KW.test(t)){inClub=true;club.push(t);continue;}
+      // Mot tout en caps mais PAS un mot-clé club → partie du nom (ex: "DURET", "CREVITS")
+      name.push(t);
+    }
+    return{name:name.join(' ').trim(),club:club.join(' ').trim(),ranking:ranks[ranks.length-1]||''};
+  };
+  const i1=extr(p1t),i2=extr(p2t);
+  return newMatch({player1:i1.name||'Joueur 1',player2:i2.name||'Joueur 2',p1Club:i1.club,p2Club:i2.club,p1Ranking:i1.ranking,p2Ranking:i2.ranking,category,round,format:isDoubles?'doubles':'bo3',scheduledTime:time||'',date:matchDate});
+}
+
+async function extractPDF(file){
+  if(!window.pdfjsLib)throw new Error('PDF.js non chargé');
+  window.pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdn.jsdelivr.net/npm/pdfjs-dist@3.4.120/build/pdf.worker.min.js';
+  const ab=await file.arrayBuffer();
+  const pdf=await pdfjsLib.getDocument({data:ab}).promise;
+  let text='';
+  for(let p=1;p<=pdf.numPages;p++){
+    const page=await pdf.getPage(p),c=await page.getTextContent();
+    const items=c.items.sort((a,b)=>{const yd=b.transform[5]-a.transform[5];return Math.abs(yd)>5?yd:a.transform[4]-b.transform[4]});
+    text+=items.map(i=>i.str).join('\n')+'\n';
+  }
+  return{text,matches:parsePDF(text)};
+}
+
+// ── ScoreDisplay partagé ─────────────────────────────────────────
+function ScoreDisplay({match}){
+  const sw=countWonSets(match);
+  const row=pi=>{
+    const won=match.winner===pi+1,lead=sw[pi]>sw[1-pi];
+    return(
+      <div className="srow" key={pi}>
+        <div className="sname" style={{color:won?'var(--clay-h)':undefined}}>
+          {match.status==='live'&&match.server===pi+1&&<span style={{width:7,height:7,borderRadius:'50%',background:'var(--clay)',display:'inline-block',flexShrink:0}}/>}
+          <span style={{lineHeight:1.2}}>
+            <span>{pi===0?match.player1:match.player2}</span>
+            {(pi===0?match.p1Ranking:match.p2Ranking)&&<span style={{fontSize:11,color:'var(--txt-l)',fontFamily:'var(--fb)',fontWeight:400,marginLeft:5}}>{pi===0?match.p1Ranking:match.p2Ranking}</span>}
+            <br/><span style={{fontSize:11,color:'var(--txt-l)',fontFamily:'var(--fb)',fontWeight:400}}>{pi===0?match.p1Club:match.p2Club}</span>
+          </span>
+        </div>
+        <div className="ssets">
+          {match.sets.map((s,i)=>{const w=(s[pi]>s[1-pi])&&(match.sets.length>i+1||match.status==='finished');return<div key={i} className={`sset${w?' w':''}`}>{s[pi]}</div>;})}
+        </div>
+        <div className="swon" style={{color:lead?'var(--dark)':'var(--txt-l)'}}>{sw[pi]}</div>
+      </div>
+    );
+  };
+  return<div>{row(0)}{row(1)}</div>;
+}
+
+// ── MatchModal ──────────────────────────────────────────────────
+function MatchModal({match,settings,onSave,onClose}){
+  const cats=settings?.categories||DEFAULT_CATS;
+  const fmtL=settings?.formatLabels||DEFAULT_FORMAT_LABELS;
+  const [f,sf]=useState(match?{player1:match.player1,player2:match.player2,p1Club:match.p1Club||'',p2Club:match.p2Club||'',p1Ranking:match.p1Ranking||'',p2Ranking:match.p2Ranking||'',category:match.category||'',round:match.round||'',court:match.court||'',format:match.format||'bo3',scheduledTime:match.scheduledTime||'',date:match.date||todayStr(),notes:match.notes||''}:{player1:'',player2:'',p1Club:settings?.clubName||'',p2Club:settings?.clubName||'',p1Ranking:'',p2Ranking:'',category:cats[0]||'',round:'',court:'',format:'bo3',scheduledTime:'',date:todayStr(),notes:''});
+  const s=(k,v)=>sf(p=>({...p,[k]:v}));
+  return(
+    <div className="overlay" onClick={onClose}>
+      <div className="modal" onClick={e=>e.stopPropagation()}>
+        <h2 className="mb4">{match?'Modifier le match':'Nouveau match'}</h2>
+        <div className="g2 mb3">
+          <div><label className="lbl">Joueur / Équipe 1</label><input className="inp" value={f.player1} onChange={e=>s('player1',e.target.value)}/></div>
+          <div><label className="lbl">Joueur / Équipe 2</label><input className="inp" value={f.player2} onChange={e=>s('player2',e.target.value)}/></div>
+        </div>
+        <div className="g2 mb3">
+          <div><label className="lbl">Club J1</label><input className="inp" value={f.p1Club} onChange={e=>s('p1Club',e.target.value)}/></div>
+          <div><label className="lbl">Club J2</label><input className="inp" value={f.p2Club} onChange={e=>s('p2Club',e.target.value)}/></div>
+        </div>
+        <div className="g2 mb3">
+          <div><label className="lbl">Classement J1</label><input className="inp" value={f.p1Ranking} onChange={e=>s('p1Ranking',e.target.value)} placeholder="30/2"/></div>
+          <div><label className="lbl">Classement J2</label><input className="inp" value={f.p2Ranking} onChange={e=>s('p2Ranking',e.target.value)} placeholder="30/3"/></div>
+        </div>
+        <div className="g2 mb3">
+          <div><label className="lbl">Catégorie</label>
+            <select className="inp" value={f.category} onChange={e=>s('category',e.target.value)}>
+              <option value="">— Sélectionner —</option>
+              {cats.map(c=><option key={c} value={c}>{c}</option>)}
+            </select>
+          </div>
+          <div><label className="lbl">Tour / Stade</label><input className="inp" value={f.round} onChange={e=>s('round',e.target.value)} placeholder="1/4 finale"/></div>
+        </div>
+        <div className="g3 mb3">
+          <div><label className="lbl">Court</label><input className="inp" value={f.court} onChange={e=>s('court',e.target.value)} placeholder="Court 1"/></div>
+          <div><label className="lbl">Heure prévue</label><input className="inp" type="time" value={f.scheduledTime} onChange={e=>s('scheduledTime',e.target.value)}/></div>
+          <div><label className="lbl">Date</label><input className="inp" type="date" value={f.date} onChange={e=>s('date',e.target.value)}/></div>
+        </div>
+        <div className="mb3"><label className="lbl">Format de jeu</label>
+          <select className="inp" value={f.format} onChange={e=>s('format',e.target.value)}>
+            {Object.entries(fmtL).map(([k,lbl])=><option key={k} value={k}>{lbl}</option>)}
+          </select>
+        </div>
+        <div className="mb4"><label className="lbl">Notes</label><textarea className="inp" value={f.notes} onChange={e=>s('notes',e.target.value)} rows={2}/></div>
+        <div className="flex je gap3"><button className="btn" onClick={onClose}>Annuler</button><button className="btn btn-p" onClick={()=>onSave(f)}>{match?'Enregistrer':'Créer'}</button></div>
+      </div>
+    </div>
+  );
+}
+
+// ── ServerSelectModal ────────────────────────────────────────────
+function ServerSelectModal({match,onStart,onClose}){
+  return(
+    <div className="overlay" onClick={onClose}>
+      <div className="modal" style={{maxWidth:420}} onClick={e=>e.stopPropagation()}>
+        <h2 className="mb2">Qui sert en premier ?</h2>
+        <p style={{color:'var(--txt-m)',fontSize:14,marginBottom:20,fontFamily:'var(--fb)'}}>{match.player1} vs {match.player2}</p>
+        <div className="flex gap3">
+          <button className="btn btn-p" style={{flex:1,justifyContent:'center',flexDirection:'column',padding:'16px',gap:4,fontSize:15}} onClick={()=>onStart(1)}>
+            🎾 {match.player1}<span style={{fontSize:12,fontWeight:400,opacity:.7}}>{match.p1Ranking}</span>
+          </button>
+          <button className="btn btn-g" style={{flex:1,justifyContent:'center',flexDirection:'column',padding:'16px',gap:4,fontSize:15}} onClick={()=>onStart(2)}>
+            🎾 {match.player2}<span style={{fontSize:12,fontWeight:400,opacity:.7}}>{match.p2Ranking}</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── ScoreCorrectionModal ─────────────────────────────────────────
+function ScoreCorrectionModal({match,settings,onSave,onClose}){
+  const [sets,setSets]=useState(deepCopy(match.sets));
+  const fmt=getFmt(match,settings);
+  const inc=(si,pi)=>setSets(s=>{const n=deepCopy(s);n[si][pi]++;return n;});
+  const dec=(si,pi)=>setSets(s=>{const n=deepCopy(s);if(n[si][pi]>0)n[si][pi]--;return n;});
+  return(
+    <div className="overlay" onClick={onClose}>
+      <div className="modal" style={{maxWidth:420}} onClick={e=>e.stopPropagation()}>
+        <h2 className="mb4">Corriger le score</h2>
+        <div className="mb4" style={{display:'flex',flexDirection:'column',gap:8}}>
+          {sets.map((s,si)=>(
+            <div key={si} style={{display:'flex',alignItems:'center',gap:8,padding:'10px 14px',background:'var(--sand-l)',borderRadius:'var(--r)'}}>
+              <span style={{fontSize:13,color:'var(--txt-m)',width:44,fontFamily:'var(--fb)'}}>Set {si+1}</span>
+              <button className="btn btn-xs" onClick={()=>dec(si,0)}>−</button>
+              <span style={{width:28,textAlign:'center',fontWeight:700,fontSize:18,fontFamily:'var(--fd)'}}>{s[0]}</span>
+              <button className="btn btn-xs" onClick={()=>inc(si,0)}>+</button>
+              <span style={{color:'var(--txt-l)',padding:'0 8px'}}>—</span>
+              <button className="btn btn-xs" onClick={()=>dec(si,1)}>−</button>
+              <span style={{width:28,textAlign:'center',fontWeight:700,fontSize:18,fontFamily:'var(--fd)'}}>{s[1]}</span>
+              <button className="btn btn-xs" onClick={()=>inc(si,1)}>+</button>
+            </div>
+          ))}
+        </div>
+        <div className="flex gap2 mb4">
+          <button className="btn btn-sm" onClick={()=>{
+            if(sets.length>=fmt.sets){alert(`Maximum ${fmt.sets} sets pour ce format`);return;}
+            const last=sets[sets.length-1];
+            if(!checkSetWon(last)&&!window.confirm('Le set en cours n\'est pas terminé ('+last[0]+'-'+last[1]+'). Ajouter quand même ?'))return;
+            setSets(s=>[...s,[0,0]]);
+          }}>+ Set</button>
+          <button className="btn btn-sm btn-ghost" onClick={()=>{if(sets.length>1)setSets(s=>s.slice(0,-1))}}>− Set</button>
+        </div>
+        <div className="flex je gap3"><button className="btn" onClick={onClose}>Annuler</button><button className="btn btn-p" onClick={()=>onSave(recalcWinner({...match,sets},settings))}>Enregistrer</button></div>
+      </div>
+    </div>
+  );
+}
+
+// ── PDFImportModal ───────────────────────────────────────────────
+function PDFImportModal({settings,onImport,onClose}){
+  const [step,setStep]=useState('upload');
+  const [preview,setPreview]=useState([]);
+  const [loading,setLoading]=useState(false);
+  const [err,setErr]=useState('');
+  const fileRef=useRef();
+  const cats=settings?.categories||DEFAULT_CATS;
+  const fmtL=settings?.formatLabels||DEFAULT_FORMAT_LABELS;
+  const handle=async file=>{setLoading(true);setErr('');try{const {matches}=await extractPDF(file);setPreview(matches);setStep('preview');}catch(e){setErr(e.message);}setLoading(false);};
+  const upd=(i,k,v)=>setPreview(p=>p.map((m,j)=>j===i?{...m,[k]:v}:m));
+  return(
+    <div className="overlay" onClick={onClose}>
+      <div className="modal" style={{maxWidth:step==='preview'?980:520}} onClick={e=>e.stopPropagation()}>
+        <div className="flex ai jb mb4"><h2>Import PDF</h2><button className="btn btn-sm btn-ghost" onClick={onClose}>✕</button></div>
+        {step==='upload'&&<>
+          <div className="warn-box">Format attendu : programmations horaires FFT / TENUP. Corrigez si besoin dans le tableau de prévisualisation.</div>
+          {err&&<div className="err-box">{err}</div>}
+          <input ref={fileRef} type="file" accept=".pdf" style={{display:'none'}} onChange={e=>e.target.files[0]&&handle(e.target.files[0])}/>
+          <div style={{border:'2px dashed var(--bdr)',borderRadius:'var(--rl)',padding:32,textAlign:'center',cursor:'pointer'}}
+            onClick={()=>fileRef.current?.click()}
+            onDragOver={e=>e.preventDefault()}
+            onDrop={e=>{e.preventDefault();const f=e.dataTransfer.files[0];if(f)handle(f)}}>
+            {loading?<div>⏳ Extraction…</div>:<><div style={{fontSize:36,marginBottom:10}}>📄</div><div style={{fontFamily:'var(--fd)',fontSize:16,marginBottom:6}}>Glissez un PDF ici</div><div style={{fontSize:13,color:'var(--txt-m)'}}>ou cliquez pour sélectionner</div></>}
+          </div>
+        </>}
+        {step==='preview'&&<>
+          <div className="info-box">✅ {preview.length} match(s) détecté(s). Vérifiez et corrigez avant d'importer.</div>
+          <div style={{overflowX:'auto'}}>
+            <table style={{width:'100%',borderCollapse:'collapse',fontSize:13}}>
+              <thead><tr style={{background:'var(--sand-l)'}}>
+                {['Heure','Catégorie','Joueur 1','Club J1','Cl.J1','Joueur 2','Club J2','Cl.J2','Format','Date',''].map((h,i)=>(
+                  <th key={i} style={{padding:'5px 6px',textAlign:'left',fontWeight:600,fontSize:11,color:'var(--txt-m)',borderBottom:'1px solid var(--bdr)',whiteSpace:'nowrap'}}>{h}</th>
+                ))}
+              </tr></thead>
+              <tbody>
+                {preview.map((m,i)=>(
+                  <tr key={i} style={{borderBottom:'1px solid var(--bdr-l)'}}>
+                    <td style={{padding:'3px 3px'}}><input className="inp" value={m.scheduledTime} onChange={e=>upd(i,'scheduledTime',e.target.value)} style={{width:64,padding:'3px 5px',fontSize:12}}/></td>
+                    <td style={{padding:'3px 3px'}}><select className="inp" value={m.category} onChange={e=>upd(i,'category',e.target.value)} style={{padding:'3px 5px',fontSize:12,minWidth:110}}>{cats.map(c=><option key={c} value={c}>{c}</option>)}<option value={m.category}>{m.category}</option></select></td>
+                    <td style={{padding:'3px 3px'}}><input className="inp" value={m.player1} onChange={e=>upd(i,'player1',e.target.value)} style={{width:120,padding:'3px 5px',fontSize:12}}/></td>
+                    <td style={{padding:'3px 3px'}}><input className="inp" value={m.p1Club} onChange={e=>upd(i,'p1Club',e.target.value)} style={{width:100,padding:'3px 5px',fontSize:12}}/></td>
+                    <td style={{padding:'3px 3px'}}><input className="inp" value={m.p1Ranking} onChange={e=>upd(i,'p1Ranking',e.target.value)} style={{width:50,padding:'3px 5px',fontSize:12}}/></td>
+                    <td style={{padding:'3px 3px'}}><input className="inp" value={m.player2} onChange={e=>upd(i,'player2',e.target.value)} style={{width:120,padding:'3px 5px',fontSize:12}}/></td>
+                    <td style={{padding:'3px 3px'}}><input className="inp" value={m.p2Club} onChange={e=>upd(i,'p2Club',e.target.value)} style={{width:100,padding:'3px 5px',fontSize:12}}/></td>
+                    <td style={{padding:'3px 3px'}}><input className="inp" value={m.p2Ranking} onChange={e=>upd(i,'p2Ranking',e.target.value)} style={{width:50,padding:'3px 5px',fontSize:12}}/></td>
+                    <td style={{padding:'3px 3px'}}><select className="inp" value={m.format} onChange={e=>upd(i,'format',e.target.value)} style={{padding:'3px 5px',fontSize:12,minWidth:75}}>{Object.entries(fmtL).map(([k,v])=><option key={k} value={k}>{v.slice(0,10)}</option>)}</select></td>
+                    <td style={{padding:'3px 3px'}}><input className="inp" type="date" value={m.date} onChange={e=>upd(i,'date',e.target.value)} style={{width:115,padding:'3px 5px',fontSize:12}}/></td>
+                    <td><button className="btn btn-xs btn-ghost" style={{color:'var(--red)'}} onClick={()=>setPreview(p=>p.filter((_,j)=>j!==i))}>✕</button></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <div className="flex je gap3" style={{marginTop:14}}>
+            <button className="btn" onClick={()=>setStep('upload')}>← Retour</button>
+            <button className="btn btn-p" onClick={()=>{onImport(preview);onClose();}}>Importer {preview.length} match(s)</button>
+          </div>
+        </>}
+      </div>
+    </div>
+  );
+}
+
+// ── MatchRowItem ─────────────────────────────────────────────────
+function MatchRowItem({match,settings,onEdit,onDelete,onStatus,onStart,onCorrect}){
+  const [now,setNow]=useState(Date.now());
+  useEffect(()=>{if(match.status!=='live')return;const t=setInterval(()=>setNow(Date.now()),30000);return()=>clearInterval(t);},[match.status]);
+  const dur=match.status==='live'&&match.startedAt?fmtDur(now-match.startedAt):match.status==='finished'&&match.startedAt&&match.endedAt?fmtDur(match.endedAt-match.startedAt):'';
+  const fmtL=settings?.formatLabels||DEFAULT_FORMAT_LABELS;
+  return(
+    <div className="mrow" style={{borderLeft:`3px solid ${match.status==='live'?'var(--red)':match.status==='finished'?'var(--green)':'var(--bdr)'}`}}>
+      <div className="mrow-head">
+        <span className={`badge ${match.status==='live'?'b-live':match.status==='finished'?'b-done':'b-pend'}`}>
+          {match.status==='live'&&<span className="dot"/>}
+          {match.status==='live'?'En direct':match.status==='finished'?'Terminé':'À venir'}
+        </span>
+        {match.scheduledTime&&<span style={{fontSize:13,fontWeight:600,color:'var(--clay)',fontFamily:'var(--fd)'}}>{match.scheduledTime}</span>}
+        {match.category&&<span style={{fontSize:12,color:'var(--txt-m)'}}>{match.category}</span>}
+        {match.round&&<span style={{fontSize:12,color:'var(--txt-l)'}}>• {match.round}</span>}
+        {match.court&&<span style={{fontSize:12,color:'var(--txt-l)'}}>• {match.court}</span>}
+        {dur&&<span className="badge b-info" style={{marginLeft:'auto'}}>⏱ {dur}</span>}
+        <span style={{fontSize:11,color:'var(--txt-l)',marginLeft:dur?0:'auto'}}>{fmtL[match.format]||match.format}</span>
+      </div>
+      <div className="mrow-body"><ScoreDisplay match={match}/></div>
+      <div className="mrow-foot">
+        {match.status==='pending'&&<button className="btn btn-p btn-sm" onClick={onStart}>▶ Démarrer</button>}
+        {match.status==='live'&&<button className="btn btn-sm" style={{borderColor:'var(--red)',color:'var(--red)'}} onClick={()=>{if(confirm('Terminer ?'))onStatus('finished')}}>⏹ Terminer</button>}
+        {match.status==='finished'&&<button className="btn btn-sm" onClick={()=>onStatus('live')}>↩ Reprendre</button>}
+        <button className="btn btn-sm btn-ghost" onClick={onCorrect}>✏ Score</button>
+        <button className="btn btn-sm btn-ghost" onClick={onEdit}>✏ Détails</button>
+        <button className="btn btn-sm btn-ghost" style={{color:'var(--red)'}} onClick={onDelete}>✕</button>
+      </div>
+    </div>
+  );
+}
+
+// ── MatchesTab ───────────────────────────────────────────────────
+function MatchesTab({matches,settings,onAdd,onEdit,onDelete,onSetStatus,onStartWithServer,onImport,onCorrect}){
+  const [showModal,setShowModal]=useState(false);
+  const [editing,setEditing]=useState(null);
+  const [correcting,setCorrecting]=useState(null);
+  const [showPDF,setShowPDF]=useState(false);
+  const [filter,setFilter]=useState('all');
+  const xlsRef=useRef();
+  const today=todayStr();
+  const sorted=useMemo(()=>matches.filter(m=>filter==='all'?true:filter==='today'?m.date===today:m.status===filter).sort((a,b)=>(a.scheduledTime||'99:99').localeCompare(b.scheduledTime||'99:99')),[matches,filter,today]);
+  const counts=useMemo(()=>({all:matches.length,today:matches.filter(m=>m.date===today).length,live:matches.filter(m=>m.status==='live').length,finished:matches.filter(m=>m.status==='finished').length}),[matches,today]);
+  // Détecte et parse le format FFT (colonnes J1/J2/J3/J4) OU le format template simple
+  const parseXLSRows = (rows) => {
+    if (!rows.length) return [];
+    const header = (rows[0]||[]).map(c=>String(c||'').toLowerCase().trim());
+    const isFFT = header.some(h=>h.includes('epreuve')||h.includes('nom prénom j1')||h.includes('nom prenom j1'));
+
+    const parseExcelDate = d => {
+      if (!d) return todayStr();
+      if (typeof d === 'number') { // serial Excel
+        const dt = new Date(Math.round((d - 25569) * 86400000));
+        return dt.toISOString().split('T')[0];
+      }
+      const s = String(d).trim();
+      const m1 = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+      if (m1) return `${m1[3]}-${m1[2].padStart(2,'0')}-${m1[1].padStart(2,'0')}`;
+      if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+      return todayStr();
+    };
+    const parseTime = t => {
+      if (!t && t !== 0) return '';
+      if (typeof t === 'number') { // Excel time fraction
+        const totalMin = Math.round(t * 1440);
+        return `${String(Math.floor(totalMin/60)).padStart(2,'0')}:${String(totalMin%60).padStart(2,'0')}`;
+      }
+      return String(t).trim();
+    };
+    const detectFmt = cat => {
+      const c = (cat||'').toLowerCase();
+      if (/doub|double|dm\b|dd\b|dx\b|mx\b/.test(c)) return 'doubles';
+      return 'bo3';
+    };
+    const g = (r, i) => (i!==undefined && r[i]!==undefined && r[i]!==null) ? String(r[i]).trim() : '';
+
+    if (isFFT) {
+      // ── Format FFT : Epreuve | Découpage | Tour | Date | Heure | Court | NomPrénom J1 | Licence J1 | Clt J1 | NomPrénom J2 | Licence J2 | Clt J2 | Résultat | Score | NomPrénom J3 | Licence J3 | Clt J3 | NomPrénom J4 | Licence J4 | Clt J4
+      const hdr = rows[0];
+      const idx = {};
+      hdr.forEach((c,i) => {
+        const h = String(c||'').toLowerCase().trim();
+        if (h.includes('epreuve'))                     idx.cat   = i;
+        else if (h.includes('découpage')||h.includes('decoupage')) idx.round = i;
+        else if (h === 'tour')                         idx.tour  = i;
+        else if (h === 'date')                         idx.date  = i;
+        else if (h === 'heure')                        idx.time  = i;
+        else if (h === 'court')                        idx.court = i;
+        else if (h.includes('j1')&&(h.includes('nom')||h.includes('prénom'))) idx.p1n = i;
+        else if (h === 'clt j1')                       idx.p1r = i;
+        else if (h.includes('j2')&&(h.includes('nom')||h.includes('prénom'))) idx.p2n = i;
+        else if (h === 'clt j2')                       idx.p2r = i;
+        else if (h.includes('j3')&&(h.includes('nom')||h.includes('prénom'))) idx.p3n = i;
+        else if (h === 'clt j3')                       idx.p3r = i;
+        else if (h.includes('j4')&&(h.includes('nom')||h.includes('prénom'))) idx.p4n = i;
+        else if (h === 'clt j4')                       idx.p4r = i;
+      });
+      return rows.slice(1).filter(r=>r&&g(r,idx.p1n)).map(r => {
+        const p1n=g(r,idx.p1n), p2n=g(r,idx.p2n), p3n=g(r,idx.p3n), p4n=g(r,idx.p4n);
+        const p1r=g(r,idx.p1r), p2r=g(r,idx.p2r), p3r=g(r,idx.p3r), p4r=g(r,idx.p4r);
+        const isDoubles = !!p2n;
+        const player1   = isDoubles ? `${p1n} / ${p2n}`.trim() : p1n;
+        const player2   = isDoubles ? `${p3n}${p4n?' / '+p4n:''}`.trim() : p3n;
+        const p1Ranking = isDoubles ? `${p1r}${p2r?' / '+p2r:''}`.trim() : p1r;
+        const p2Ranking = isDoubles ? `${p3r}${p4r?' / '+p4r:''}`.trim() : p3r;
+        const roundText = [g(r,idx.round), g(r,idx.tour)?`Tour ${g(r,idx.tour)}`:''].filter(Boolean).join(' – ');
+        return newMatch({
+          player1, player2, p1Ranking, p2Ranking, p1Club:'', p2Club:'',
+          category: g(r,idx.cat), round: roundText, court: g(r,idx.court),
+          format: isDoubles?'doubles':detectFmt(g(r,idx.cat)),
+          scheduledTime: parseTime(r[idx.time]), date: parseExcelDate(r[idx.date]),
+        });
+      }).filter(m=>m.player1&&m.player2);
+    } else {
+      // ── Format template simple : J1 | J2 | ClubJ1 | ClubJ2 | Cl.J1 | Cl.J2 | Catégorie | Tour | Court | Format | Heure | Date
+      return rows.slice(1).filter(r=>r&&r[0]&&r[1]).map(r=>newMatch({
+        player1:g(r,0),player2:g(r,1),p1Club:g(r,2),p2Club:g(r,3),
+        p1Ranking:g(r,4),p2Ranking:g(r,5),category:g(r,6),round:g(r,7),
+        court:g(r,8),format:g(r,9)||'bo3',scheduledTime:g(r,10),
+        date:parseExcelDate(r[11])||today,
+      }));
+    }
+  };
+
+  const handleXLS=e=>{
+    const file=e.target.files[0];if(!file)return;
+    const r=new FileReader();
+    r.onload=ev=>{
+      try{
+        const wb=XLSX.read(ev.target.result,{type:'binary',cellDates:false});
+        const rows=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,raw:true});
+        const imp=parseXLSRows(rows);
+        onImport(imp);
+        alert(`✅ ${imp.length} match(s) importé(s)`);
+      }catch(err){alert('Erreur : '+err.message);}
+    };
+    r.readAsBinaryString(file);e.target.value='';
+  };
+  const dlTpl=()=>{const ws=XLSX.utils.aoa_to_sheet([['Joueur1','Joueur2','ClubJ1','ClubJ2','Cl.J1','Cl.J2','Catégorie','Tour','Court','Format','Heure','Date'],['DUPONT Jean','MARTIN Paul','Club Léo Lagrange','TC Paris','30/2','30/3','SM Senior','1/4 finale','Court 1','bo3','18:00',today]]);const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Matchs');XLSX.writeFile(wb,'modele_matchs.xlsx');};
+  return(
+    <div>
+      <div className="flex ai gap3 mb4" style={{flexWrap:'wrap'}}>
+        <h1>Matchs</h1>
+        <div className="flex gap2 ml-a" style={{flexWrap:'wrap'}}>
+          <input ref={xlsRef} type="file" accept=".xlsx,.xls" onChange={handleXLS} style={{display:'none'}}/>
+          <button className="btn btn-sm" onClick={dlTpl}>⬇ Modèle Excel</button>
+          <button className="btn btn-sm" onClick={()=>xlsRef.current?.click()}>⬆ Excel</button>
+          <button className="btn btn-sm" onClick={()=>setShowPDF(true)}>📄 PDF</button>
+          <button className="btn btn-p btn-sm" onClick={()=>{setEditing(null);setShowModal(true);}}>+ Nouveau</button>
+        </div>
+      </div>
+      <div className="flex gap2 mb4" style={{flexWrap:'wrap'}}>
+        {[['all','Tous'],['today',"Auj."],['live','En cours'],['finished','Terminés']].map(([k,lbl])=>(
+          <button key={k} className={`btn btn-sm ${filter===k?'btn-p':''}`} onClick={()=>setFilter(k)}>{lbl} <span style={{opacity:.7}}>({counts[k]||0})</span></button>
+        ))}
+      </div>
+      {sorted.length===0
+        ?<div className="card" style={{textAlign:'center',padding:40,color:'var(--txt-m)'}}><div style={{fontSize:36,marginBottom:10}}>🎾</div><p>Aucun match</p></div>
+        :sorted.map(m=><MatchRowItem key={m.id} match={m} settings={settings}
+            onEdit={()=>{setEditing(m);setShowModal(true);}}
+            onDelete={()=>{if(confirm('Supprimer ?'))onDelete(m.id);}}
+            onStatus={st=>onSetStatus(m.id,st)}
+            onStart={()=>onStartWithServer(m)}
+            onCorrect={()=>setCorrecting(m)}/>)
+      }
+      {showModal&&<MatchModal match={editing} settings={settings} onSave={fd=>{if(editing)onEdit(editing.id,fd);else onAdd(fd);setShowModal(false);setEditing(null);}} onClose={()=>{setShowModal(false);setEditing(null);}}/>}
+      {correcting&&<ScoreCorrectionModal match={correcting} settings={settings} onSave={m=>{onCorrect(m);setCorrecting(null);}} onClose={()=>setCorrecting(null)}/>}
+      {showPDF&&<PDFImportModal settings={settings} onImport={onImport} onClose={()=>setShowPDF(false)}/>}
+    </div>
+  );
+}
+
+// ── ScorerTab ─────────────────────────────────────────────────────
+// Affiche TOUS les matchs en attente et en cours, triés par heure
+// Le marqueur peut démarrer un match directement depuis cet écran
+function ScorerTab({matches,settings,onAddGame,onUndo,onServer,onSetStatus,onStartWithServer}){
+  // Matchs actifs : en attente + en cours, triés (live d'abord, puis heure croissante)
+  const active=useMemo(()=>[...matches]
+    .filter(m=>m.status==='pending'||m.status==='live')
+    .sort((a,b)=>{
+      if(a.status==='live'&&b.status!=='live')return -1;
+      if(b.status==='live'&&a.status!=='live')return 1;
+      return timeToMin(a.scheduledTime)-timeToMin(b.scheduledTime);
+    })
+  ,[matches]);
+
+  const [selId,setSelId]=useState(null);
+  const [now,setNow]=useState(Date.now());
+
+  // Auto-sélection : priorité au match en cours, sinon le premier à venir
+  useEffect(()=>{
+    const live=active.find(m=>m.status==='live');
+    const best=live||active[0];
+    if(best&&(!selId||!active.find(m=>m.id===selId)))setSelId(best.id);
+  },[active.map(m=>m.id+m.status).join()]);
+
+  useEffect(()=>{const t=setInterval(()=>setNow(Date.now()),1000);return()=>clearInterval(t);},[]);
+
+  const sel=active.find(m=>m.id===selId)||active[0];
+  const isLive=sel?.status==='live';
+  const isPending=sel?.status==='pending';
+  const fmt=sel?getFmt(sel,settings):null;
+  const sw=sel?countWonSets(sel):[0,0];
+  const si=sel?sel.sets.length-1:0;
+  const isSuperTBFinal=fmt&&fmt.finalSuper&&sel&&sel.sets.length===fmt.sets;
+  const isTBOnly=fmt?.tbOnly;
+  const isAtTB=sel&&!isSuperTBFinal&&!isTBOnly&&sel.sets[si]&&sel.sets[si][0]===6&&sel.sets[si][1]===6;
+  const dur=sel?.startedAt?fmtDur(now-sel.startedAt):'';
+
+  if(active.length===0)return(
+    <div style={{padding:24}}>
+      <div className="card" style={{textAlign:'center',padding:48,color:'var(--txt-m)'}}>
+        <div style={{fontSize:40,marginBottom:12}}>🎾</div>
+        <h3 style={{marginBottom:6}}>Aucun match à gérer</h3>
+        <p style={{fontSize:14}}>Créez des matchs depuis l'onglet Matchs</p>
+      </div>
+    </div>
+  );
+
+  return(
+    <div style={{padding:16,maxWidth:540,margin:'0 auto'}}>
+
+      {/* Liste de sélection si plusieurs matchs */}
+      {active.length>1&&(
+        <div className="mb3">
+          <label className="lbl">Choisir un match</label>
+          <div style={{display:'flex',flexDirection:'column',gap:6}}>
+            {active.map(m=>{
+              const isSel=m.id===selId;
+              const isML=m.status==='live';
+              return(
+                <button key={m.id} onClick={()=>setSelId(m.id)}
+                  style={{padding:'10px 14px',borderRadius:'var(--r)',border:`2px solid ${isSel?(isML?'var(--red)':'var(--clay)'):'var(--bdr-l)'}`,background:isSel?'var(--sand-l)':'var(--white)',cursor:'pointer',textAlign:'left',transition:'all .15s',width:'100%',fontFamily:'var(--fb)'}}>
+                  <div style={{display:'flex',alignItems:'center',gap:8}}>
+                    {isML
+                      ?<span className="badge b-live" style={{fontSize:10}}><span className="dot"/>Live</span>
+                      :<span className="badge b-pend" style={{fontSize:10}}>⏳ {m.scheduledTime||'À venir'}</span>
+                    }
+                    <span style={{fontFamily:'var(--fd)',fontWeight:600,fontSize:14,flex:1}}>{m.player1} <span style={{opacity:.4,fontWeight:400}}>vs</span> {m.player2}</span>
+                    {m.category&&<span style={{fontSize:11,color:'var(--txt-l)'}}>{m.category}</span>}
+                  </div>
+                  {isML&&<div style={{fontSize:12,color:'var(--txt-m)',marginTop:4,fontFamily:'var(--fb)'}}>{scoreText(m)}</div>}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {sel&&<>
+        {/* Carte info match */}
+        <div className="card mb3">
+          <div className="flex ai gap2 mb3" style={{flexWrap:'wrap'}}>
+            {isLive
+              ?<span className="badge b-live"><span className="dot"/>En direct</span>
+              :<span className="badge b-pend">⏳ {sel.scheduledTime||'À venir'}</span>
+            }
+            {sel.court&&<span style={{fontSize:13,color:'var(--txt-m)'}}>{sel.court}</span>}
+            {isLive&&dur&&<span style={{fontSize:13,color:'var(--txt-m)',marginLeft:'auto'}}>⏱ {dur}</span>}
+            <span style={{fontSize:12,color:'var(--txt-l)',marginLeft:(!isLive||!dur)?'auto':0}}>{fmt?.label}</span>
+          </div>
+
+          {/* Joueurs */}
+          {[0,1].map(pi=>{
+            const lead=sw[pi]>sw[1-pi];
+            return(
+              <div key={pi} className="srow">
+                <div className="sname">
+                  {isLive&&sel.server===pi+1&&<span style={{width:8,height:8,borderRadius:'50%',background:'var(--clay)',display:'inline-block',flexShrink:0}}/>}
+                  <div>
+                    <div style={{fontFamily:'var(--fd)',fontSize:15,fontWeight:700}}>{pi===0?sel.player1:sel.player2}</div>
+                    <div style={{fontSize:11,color:'var(--txt-l)',fontFamily:'var(--fb)'}}>{pi===0?sel.p1Club:sel.p2Club} {pi===0?sel.p1Ranking:sel.p2Ranking}</div>
+                  </div>
+                </div>
+                {isLive&&<>
+                  <div className="ssets">{sel.sets.map((s,i)=>{const w=(s[pi]>s[1-pi])&&(sel.sets.length>i+1||sel.status==='finished');return<div key={i} className={`sset${w?' w':''}`} style={{fontSize:i===si?18:13}}>{s[pi]}</div>;})}</div>
+                  <div className="swon" style={{color:lead?'var(--dark)':'var(--txt-l)'}}>{sw[pi]}</div>
+                </>}
+              </div>
+            );
+          })}
+          {isAtTB&&<div style={{textAlign:'center',padding:'5px',fontSize:12,color:'var(--clay)',fontWeight:600,fontFamily:'var(--fb)'}}>⚡ TIE-BREAK</div>}
+          {(isSuperTBFinal||isTBOnly)&&<div style={{textAlign:'center',padding:'5px',fontSize:12,color:'var(--clay)',fontWeight:600,fontFamily:'var(--fb)'}}>⚡ SUPER TIE-BREAK</div>}
+        </div>
+
+        {/* Démarrer le match (si en attente) */}
+        {isPending&&(
+          <div className="card mb3" style={{textAlign:'center',padding:24,borderStyle:'dashed',borderColor:'var(--clay)',background:'var(--clay-pale)'}}>
+            <div style={{fontSize:13,color:'var(--clay-h)',marginBottom:14,fontFamily:'var(--fb)'}}>Ce match n'a pas encore démarré</div>
+            <button className="btn btn-p" style={{fontSize:16,padding:'12px 32px'}} onClick={()=>onStartWithServer(sel)}>
+              ▶ Démarrer ce match
+            </button>
+          </div>
+        )}
+
+        {/* Boutons de score (match en cours) */}
+        {isLive&&!sel.winner&&(
+          <div className="card mb3">
+            <div style={{fontFamily:'var(--fd)',fontWeight:600,marginBottom:12,fontSize:14}}>
+              {isSuperTBFinal||isTBOnly?'Qui gagne le Super Tie-Break ?':isAtTB?'Qui gagne le Tie-Break ?':'Qui gagne ce jeu ?'}
+            </div>
+            <div className="flex gap3">
+              <button
+                style={{padding:'20px 10px',borderRadius:'var(--rl)',font:'700 15px var(--fd)',flex:1,cursor:'pointer',border:'2px solid var(--clay)',background:'rgba(196,92,38,.07)',color:'var(--clay)',display:'flex',flexDirection:'column',alignItems:'center',gap:6,minHeight:82,transition:'transform .1s'}}
+                onMouseDown={e=>e.currentTarget.style.transform='scale(.97)'}
+                onMouseUp={e=>e.currentTarget.style.transform=''}
+                onClick={()=>onAddGame(sel.id,1)}>
+                <span style={{fontSize:22}}>🎾</span>
+                <span style={{textAlign:'center',lineHeight:1.2}}>{sel.player1}</span>
+                <span style={{fontSize:11,opacity:.7,fontWeight:400}}>{sel.p1Ranking}</span>
+              </button>
+              <button
+                style={{padding:'20px 10px',borderRadius:'var(--rl)',font:'700 15px var(--fd)',flex:1,cursor:'pointer',border:'2px solid var(--green)',background:'rgba(45,122,79,.07)',color:'var(--green)',display:'flex',flexDirection:'column',alignItems:'center',gap:6,minHeight:82,transition:'transform .1s'}}
+                onMouseDown={e=>e.currentTarget.style.transform='scale(.97)'}
+                onMouseUp={e=>e.currentTarget.style.transform=''}
+                onClick={()=>onAddGame(sel.id,2)}>
+                <span style={{fontSize:22}}>🎾</span>
+                <span style={{textAlign:'center',lineHeight:1.2}}>{sel.player2}</span>
+                <span style={{fontSize:11,opacity:.7,fontWeight:400}}>{sel.p2Ranking}</span>
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Vainqueur */}
+        {sel.winner&&(
+          <div className="card mb3" style={{borderLeft:'3px solid var(--green)',background:'var(--green-l)'}}>
+            <div style={{fontFamily:'var(--fd)',color:'var(--green)',fontWeight:700,fontSize:16}}>
+              🏆 Vainqueur : {sel.winner===1?sel.player1:sel.player2}
+              {dur&&<span style={{fontSize:13,fontWeight:400,opacity:.7,marginLeft:10}}>{dur}</span>}
+            </div>
+            <div style={{marginTop:8}}><button className="btn btn-sm" onClick={()=>onSetStatus(sel.id,'finished')}>Clore le match</button></div>
+          </div>
+        )}
+
+        {/* Contrôles service + annulation (match en cours) */}
+        {isLive&&(
+          <div className="g2">
+            <div className="card" style={{padding:12}}>
+              <div className="lbl mb2">Service actuel</div>
+              <div className="flex gap2">
+                <button className={`btn btn-sm ${sel.server===1?'btn-p':''}`} style={{flex:1}} onClick={()=>onServer(sel.id,1)}>{sel.player1.split(/[\s/]/)[0]}</button>
+                <button className={`btn btn-sm ${sel.server===2?'btn-p':''}`} style={{flex:1}} onClick={()=>onServer(sel.id,2)}>{sel.player2.split(/[\s/]/)[0]}</button>
+              </div>
+            </div>
+            <div className="card" style={{padding:12}}>
+              <div className="lbl mb2">Actions</div>
+              <div className="flex gap2">
+                <button className="btn btn-sm" style={{flex:1}} onClick={()=>onUndo(sel.id)}>↩ Annuler</button>
+                <button className="btn btn-sm" style={{flex:1,borderColor:'var(--red)',color:'var(--red)'}} onClick={()=>{if(confirm('Terminer ce match ?'))onSetStatus(sel.id,'finished')}}>⏹ Fin</button>
+              </div>
+            </div>
+          </div>
+        )}
+      </>}
+    </div>
+  );
+}
+
+// ── SettingsTab ──────────────────────────────────────────────────
+function SettingsTab({settings,onSave,fbConfig,onFBSave,fbStatus}){
+  const [form,setForm]=useState(deepCopy(settings));
+  const [showFB,setShowFB]=useState(false);
+  const [spIn,setSpIn]=useState('');
+  const [catIn,setCatIn]=useState('');
+  const s=(k,v)=>setForm(f=>({...f,[k]:v}));
+  const upImg=(e,key)=>{const file=e.target.files[0];if(!file)return;const r=new FileReader();r.onload=ev=>s(key,ev.target.result);r.readAsDataURL(file);};
+  const upSpLogo=(e,i)=>{const file=e.target.files[0];if(!file)return;const r=new FileReader();r.onload=ev=>s('sponsors',form.sponsors.map((sp,j)=>j===i?{...sp,logo:ev.target.result}:sp));r.readAsDataURL(file);};
+  const fbRef=useRef();
+  const expFB=()=>{if(!fbConfig)return alert('Aucune config');const b=new Blob([JSON.stringify(fbConfig,null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='firebase-config.json';a.click();};
+  const impFB=e=>{const file=e.target.files[0];if(!file)return;const r=new FileReader();r.onload=ev=>{try{onFBSave(JSON.parse(ev.target.result));}catch(e){alert('JSON invalide');}};r.readAsText(file);e.target.value='';};
+  return(
+    <div>
+      <div className="flex ai jb mb4"><h1>Paramètres</h1><button className="btn btn-p" onClick={()=>onSave(form)}>💾 Enregistrer</button></div>
+      <div className="g2" style={{gap:20,alignItems:'start'}}>
+        <div>
+          <div className="card mb4">
+            <div className="flex ai gap2 mb3"><h3>🔥 Firebase</h3>
+              <span style={{marginLeft:'auto',fontSize:12,padding:'2px 9px',borderRadius:20,background:fbStatus==='connected'?'var(--green-l)':'var(--sand-l)',color:fbStatus==='connected'?'var(--green)':'var(--txt-l)',border:'1px solid',borderColor:fbStatus==='connected'?'rgba(45,122,79,.25)':'var(--bdr-l)'}}>{fbStatus==='connected'?'● Connecté':'○ Non connecté'}</span>
+            </div>
+            {fbStatus!=='connected'&&<div className="warn-box">Sans Firebase, la synchro entre appareils ne fonctionne pas.</div>}
+            {fbStatus==='connected'&&<div className="info-box">✅ Synchronisation active — tous vos appareils sont connectés.</div>}
+            {FIREBASE_CONFIG_BUILTIN.databaseURL&&(
+              <div className="info-box" style={{marginBottom:12}}>
+                📌 <strong>Config intégrée au fichier</strong> — fonctionne sur tous les PC sans reconfiguration.
+              </div>
+            )}
+            {!FIREBASE_CONFIG_BUILTIN.databaseURL&&(
+              <div className="warn-box">
+                💡 <strong>Astuce :</strong> Pour ne plus jamais resaisir la config en changeant de PC, ouvrez le fichier HTML dans un éditeur de texte et remplissez les champs <code>FIREBASE_CONFIG_BUILTIN</code> en haut du fichier. La config sera intégrée et fonctionnera partout automatiquement.
+              </div>
+            )}
+            <div className="flex gap2" style={{flexWrap:'wrap'}}>
+              <button className="btn btn-sm btn-p" onClick={()=>setShowFB(true)}>⚙ Configurer</button>
+              <button className="btn btn-sm" onClick={expFB}>⬇ Exporter config</button>
+              <input ref={fbRef} type="file" accept=".json" onChange={impFB} style={{display:'none'}}/>
+              <button className="btn btn-sm" onClick={()=>fbRef.current?.click()}>⬆ Importer config</button>
+              {fbConfig&&!FIREBASE_CONFIG_BUILTIN.databaseURL&&(
+                <button className="btn btn-sm" style={{borderColor:'var(--clay)',color:'var(--clay)'}}
+                  onClick={()=>{
+                    const txt=JSON.stringify(fbConfig);
+                    const msg=`Copiez ces valeurs dans le fichier HTML (bloc FIREBASE_CONFIG_BUILTIN) :\n\n${Object.entries(fbConfig).map(([k,v])=>`  ${k}: "${v}"`).join(',\n')}`;
+                    prompt('Config à copier dans le fichier HTML :', msg);
+                  }}>
+                  📋 Voir la config à intégrer
+                </button>
+              )}
+            </div>
+          </div>
+          <div className="card mb4">
+            <h3 className="mb3">🏆 Tournoi</h3>
+            <div className="mb3"><label className="lbl">Nom du tournoi</label><input className="inp" value={form.tournamentName} onChange={e=>s('tournamentName',e.target.value)}/></div>
+            <div><label className="lbl">Nom du club</label><input className="inp" value={form.clubName} onChange={e=>s('clubName',e.target.value)}/></div>
+          </div>
+          <div className="card mb4">
+            <h3 className="mb3">📋 Catégories</h3>
+            <div className="flex gap2 mb3">
+              <input className="inp" value={catIn} onChange={e=>setCatIn(e.target.value)} placeholder="Nouvelle catégorie" onKeyDown={e=>{if(e.key==='Enter'&&catIn.trim()){s('categories',[...form.categories,catIn.trim()]);setCatIn('');}}}/>
+              <button className="btn btn-p btn-sm" onClick={()=>{if(catIn.trim()){s('categories',[...form.categories,catIn.trim()]);setCatIn('');}}}>+</button>
+            </div>
+            {(form.categories||[]).map((c,i)=>(
+              <div key={i} className="flex ai gap2 mb2">
+                <input className="inp" value={c} onChange={e=>s('categories',form.categories.map((x,j)=>j===i?e.target.value:x))} style={{padding:'5px 8px',fontSize:13}}/>
+                <button className="btn btn-xs btn-ghost" style={{color:'var(--red)'}} onClick={()=>s('categories',form.categories.filter((_,j)=>j!==i))}>✕</button>
+              </div>
+            ))}
+          </div>
+          <div className="card">
+            <h3 className="mb3">🏷 Noms des formats</h3>
+            {Object.keys(BASE_FORMATS).map(k=>(
+              <div key={k} className="mb2"><label className="lbl">{k}</label><input className="inp" value={form.formatLabels?.[k]||DEFAULT_FORMAT_LABELS[k]} onChange={e=>s('formatLabels',{...form.formatLabels,[k]:e.target.value})}/></div>
+            ))}
+          </div>
+        </div>
+        <div>
+          <div className="card mb4">
+            <h3 className="mb3">🏅 Logo du club</h3>
+            <input type="file" accept="image/*" id="clogo" style={{display:'none'}} onChange={e=>upImg(e,'clubLogo')}/>
+            <label htmlFor="clogo" className="btn btn-sm" style={{cursor:'pointer',display:'inline-block',marginBottom:12}}>📁 Logo</label>
+            {form.clubLogo&&<div className="flex ai gap2"><img src={form.clubLogo} alt="logo" style={{height:56,objectFit:'contain',borderRadius:4,background:'rgba(0,0,0,.04)',padding:4}}/><button className="btn btn-sm btn-ghost" onClick={()=>s('clubLogo','')}>✕</button></div>}
+          </div>
+          <div className="card mb4">
+            <h3 className="mb3">🎨 Apparence TV</h3>
+            {[['bgColor','Fond'],['primaryColor','Couleur principale'],['textColor','Texte'],['accentColor','Accent']].map(([k,lbl])=>(
+              <div className="mb3" key={k}><label className="lbl">{lbl}</label><div className="flex gap2 ai"><input type="color" value={form[k]||'#000'} onChange={e=>s(k,e.target.value)} style={{width:40,height:34,borderRadius:4,border:'1px solid var(--bdr)',cursor:'pointer',padding:2}}/><input className="inp" value={form[k]||''} onChange={e=>s(k,e.target.value)}/></div></div>
+            ))}
+            <div className="mb3"><label className="lbl">Image de fond</label><input type="file" accept="image/*" id="bgimg" style={{display:'none'}} onChange={e=>upImg(e,'bgImage')}/><div className="flex gap2"><label htmlFor="bgimg" className="btn btn-sm" style={{cursor:'pointer'}}>📁</label>{form.bgImage&&<button className="btn btn-sm btn-ghost" onClick={()=>s('bgImage','')}>✕</button>}</div>{form.bgImage&&<img src={form.bgImage} alt="" style={{marginTop:8,width:'100%',height:60,objectFit:'cover',borderRadius:4}}/>}</div>
+            <div><label className="lbl">Affichage live</label><select className="inp" value={form.scrollMode} onChange={e=>s('scrollMode',e.target.value)}><option value="scroll">Défilement auto (2 max)</option><option value="all">Tous affichés</option></select></div>
+          </div>
+          <div className="card">
+            <h3 className="mb3">🤝 Sponsors</h3>
+            <div className="mb3"><label className="lbl">Intervalle (sec)</label><input type="number" className="inp" value={form.sponsorInterval} onChange={e=>s('sponsorInterval',parseInt(e.target.value)||10)} min={3} max={60}/></div>
+            <div className="flex gap2 mb3"><input className="inp" value={spIn} onChange={e=>setSpIn(e.target.value)} placeholder="Nom du sponsor" onKeyDown={e=>{if(e.key==='Enter'&&spIn.trim()){s('sponsors',[...(form.sponsors||[]),{name:spIn,logo:''}]);setSpIn('')}}}/><button className="btn btn-p btn-sm" onClick={()=>{if(spIn.trim()){s('sponsors',[...(form.sponsors||[]),{name:spIn,logo:''}]);setSpIn('');}}}>+</button></div>
+            {(form.sponsors||[]).map((sp,i)=>(
+              <div key={i} className="flex ai gap2 mb2" style={{padding:'6px 10px',background:'var(--cream)',borderRadius:'var(--r)'}}>
+                {sp.logo?<img src={sp.logo} alt={sp.name} style={{height:24,objectFit:'contain'}}/>:<div style={{width:32,height:24,background:'var(--bdr-l)',borderRadius:3,fontSize:10,color:'var(--txt-l)',display:'flex',alignItems:'center',justifyContent:'center'}}>logo</div>}
+                <span style={{flex:1,fontSize:13}}>{sp.name}</span>
+                <input type="file" accept="image/*" id={`sp${i}`} style={{display:'none'}} onChange={e=>upSpLogo(e,i)}/>
+                <label htmlFor={`sp${i}`} className="btn btn-xs" style={{cursor:'pointer'}}>Logo</label>
+                <button className="btn btn-xs btn-ghost" style={{color:'var(--red)'}} onClick={()=>s('sponsors',form.sponsors.filter((_,j)=>j!==i))}>✕</button>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+      {showFB&&<FirebaseModal config={fbConfig} onSave={cfg=>{onFBSave(cfg);setShowFB(false);}} onClose={()=>setShowFB(false)}/>}
+    </div>
+  );
+}
+
+// ── FirebaseModal ────────────────────────────────────────────────
+function FirebaseModal({config,onSave,onClose}){
+  const BL={apiKey:'',authDomain:'',databaseURL:'',projectId:'',storageBucket:'',messagingSenderId:'',appId:''};
+  const [f,sf]=useState(config||BL);
+  const s=(k,v)=>sf(p=>({...p,[k]:v}));
+  const fields=[['apiKey','API Key'],['authDomain','Auth Domain'],['databaseURL','Database URL ← Realtime DB'],['projectId','Project ID'],['storageBucket','Storage Bucket'],['messagingSenderId','Messaging Sender ID'],['appId','App ID']];
+  return(
+    <div className="overlay" onClick={onClose}>
+      <div className="modal" onClick={e=>e.stopPropagation()}>
+        <h2 className="mb3">🔥 Configuration Firebase</h2>
+        <div className="warn-box">1) <a href="https://console.firebase.google.com" target="_blank">console.firebase.google.com</a> → Créer projet<br/>2) Activer <b>Realtime Database</b> → mode test<br/>3) ⚙ Paramètres → Apps → ⊕ Web → copier config</div>
+        {fields.map(([k,lbl])=>(
+          <div key={k} style={{marginBottom:9}}><label className="lbl">{lbl}</label><input className="inp" value={f[k]||''} onChange={e=>s(k,e.target.value)} style={{fontFamily:'monospace',fontSize:12}}/></div>
+        ))}
+        <div className="flex je gap3" style={{marginTop:14}}><button className="btn" onClick={onClose}>Annuler</button><button className="btn btn-p" onClick={()=>onSave(f)}>Connecter</button></div>
+      </div>
+    </div>
+  );
+}
+
+// ── TVDisplay ─────────────────────────────────────────────────────
+function TVDisplay({data,comments,user,onComment,onGoogleLogin,isPublic}){
+  const {matches,settings}=data;
+  const today=todayStr();
+  // Sidebar = matchs du jour (ou tous si aucun aujourd'hui)
+  const todayM=useMemo(()=>{
+    const td=matches.filter(m=>m.date===today);
+    return (td.length>0?td:matches).sort((a,b)=>timeToMin(a.scheduledTime)-timeToMin(b.scheduledTime));
+  },[matches,today]);
+  // Live = TOUS les matchs en cours, peu importe la date
+  const live=useMemo(()=>matches.filter(m=>m.status==='live'),[matches]);
+  const [scrollIdx,setScrollIdx]=useState(0);
+  const [sponsorIdx,setSponsorIdx]=useState(0);
+  const [time,setTime]=useState(new Date());
+  const [durs,setDurs]=useState({});
+  const [cmtIn,setCmtIn]=useState('');
+  const pc=settings.primaryColor||'#c45c26',tc=settings.textColor||'#f5e8d5',ac=settings.accentColor||'#c9a227',bg=settings.bgColor||'#2a1508';
+
+  useEffect(()=>{const t=setInterval(()=>{setTime(new Date());setDurs(d=>{const n={...d};live.forEach(m=>{if(m.startedAt)n[m.id]=fmtDur(Date.now()-m.startedAt)});return n});},1000);return()=>clearInterval(t);},[live.length]);
+  useEffect(()=>{if(live.length<=2)return;const t=setInterval(()=>setScrollIdx(i=>(i+2)%live.length),9000);return()=>clearInterval(t);},[live.length]);
+  useEffect(()=>{if(!(settings.sponsors?.length))return;const t=setInterval(()=>setSponsorIdx(i=>(i+1)%settings.sponsors.length),(settings.sponsorInterval||10)*1000);return()=>clearInterval(t);},[settings.sponsors?.length,settings.sponsorInterval]);
+
+  const displayed=live.length>2?live.slice(scrollIdx,scrollIdx+2):live;
+  const lastCmt=(comments||[]).slice(-1)[0];
+
+  const TVMatch=({match})=>{
+    const f=getFmt(match,settings),sw=countWonSets(match),isLive=match.status==='live',isDone=match.status==='finished';
+    const isFinal=match.sets.length===f.sets,isSuperFinal=f.finalSuper&&isFinal,isTBOnly=f.tbOnly;
+    const si=match.sets.length-1;
+    const isAtTB=!isSuperFinal&&!isTBOnly&&match.sets[si]&&match.sets[si][0]===6&&match.sets[si][1]===6;
+    const dur=match.startedAt?(isDone&&match.endedAt?fmtDur(match.endedAt-match.startedAt):durs[match.id]||''):'';
+    const rowP=pi=>{
+      const oi=1-pi,won=match.winner===pi+1,lead=sw[pi]>sw[oi];
+      const pn=pi===0?match.player1:match.player2,pclub=pi===0?match.p1Club:match.p2Club,pr=pi===0?match.p1Ranking:match.p2Ranking;
+      return(
+        <div className="tv-prow" key={pi} style={{background:pi%2===0?'rgba(255,255,255,.02)':'transparent',opacity:isDone&&!won?.55:1}}>
+          <div className="tv-serve" style={{background:match.server===pi+1&&isLive?pc:'transparent',boxShadow:match.server===pi+1&&isLive?`0 0 10px ${pc}99`:'none'}}/>
+          <div className="tv-pname" style={{color:won?ac:tc}}>
+            <div style={{fontSize:'clamp(18px,2.8vw,28px)',fontWeight:won?900:700,letterSpacing:'-.3px',textShadow:won?`0 0 20px ${ac}66`:'none'}}>{won&&'🏆 '}{pn}</div>
+            <div style={{fontSize:'clamp(10px,1.2vw,13px)',opacity:.5,fontFamily:'var(--fb)',marginTop:2,letterSpacing:.3}}>{pclub}{pr?` · ${pr}`:''}</div>
+          </div>
+          <div className="tv-psets">
+            {match.sets.map((st,i)=>{
+              const setDone=checkSetWon(st)||(isDone&&i===match.sets.length-1&&st[0]!==st[1]);
+              const w=setDone&&st[pi]>st[oi];
+              return<div key={i} className={`tv-pset${w?' w':''}`} style={{color:w?'#fff':tc,fontWeight:w?900:600}}>{st[pi]}</div>;
+            })}
+          </div>
+          <div className="tv-pgame" style={{background:isLive?`${pc}33`:'transparent',color:isLive?pc:'transparent',border:`2px solid ${isLive?pc:'transparent'}`,visibility:isLive?'visible':'hidden',boxShadow:isLive?`0 0 12px ${pc}44`:'none'}}>{isSuperFinal||isTBOnly?'ST':isAtTB?'TB':'—'}</div>
+          <div className={`tv-swon${lead?' lead':''}`} style={{color:lead?ac:'rgba(255,255,255,.2)',textShadow:lead?`0 0 20px ${ac}88`:'none'}}>{sw[pi]}</div>
+        </div>
+      );
+    };
+    return(
+      <div className="tv-card" style={{borderTop:`3px solid ${isDone?ac:pc}`}}>
+        <div className="tv-card-hdr" style={{color:tc,background:isDone?`${ac}18`:'rgba(0,0,0,.2)'}}>
+          {isLive&&<><div className="dot" style={{width:8,height:8}}/><span style={{color:'#ff5555',fontWeight:600}}>LIVE</span></>}
+          {isDone&&<span style={{color:ac,fontWeight:700,fontSize:13}}>TERMINÉ</span>}
+          {match.category&&<span style={{opacity:.7}}>{match.category}</span>}
+          {match.round&&<span style={{opacity:.5}}>• {match.round}</span>}
+          {match.court&&<span style={{opacity:.5}}>• {match.court}</span>}
+          {match.scheduledTime&&<span style={{color:isDone?ac:ac,marginLeft:'auto'}}>🕐 {match.scheduledTime}</span>}
+          {!match.scheduledTime&&<span style={{marginLeft:'auto',opacity:.3}}>{f.label}</span>}
+        </div>
+        {rowP(0)}{rowP(1)}
+        {isDone&&(
+          <div style={{padding:'8px 18px',borderTop:`1px solid ${ac}33`,background:`${ac}10`,textAlign:'center'}}>
+            <span style={{fontFamily:'var(--fd)',color:ac,fontWeight:700,fontSize:'clamp(14px,1.8vw,20px)',letterSpacing:1}}>
+              {match.sets.map(s=>`${s[0]}–${s[1]}`).join('  ')}
+            </span>
+            {dur&&<span style={{fontFamily:'var(--fb)',color:tc,opacity:.5,fontSize:12,marginLeft:14}}>⏱ {dur}</span>}
+          </div>
+        )}
+        {!isDone&&<div className="tv-card-foot" style={{color:tc}}>{f.label}{dur&&<><span style={{opacity:.3}}>•</span><span>⏱ {dur}</span></>}</div>}
+      </div>
+    );
+  };
+
+  const SBItem=({m})=>{
+    const sw=countWonSets(m),isLive=m.status==='live',isDone=m.status==='finished',isPend=m.status==='pending';
+    const dur2=m.startedAt&&m.endedAt?fmtDur(m.endedAt-m.startedAt):isLive?durs[m.id]||'':'';
+    const nbSets=m.sets.length;
+
+    if(isDone){
+      // ── Tableau style scoreboard pour les matchs terminés
+      return(
+        <div style={{padding:'8px 10px 6px',borderBottom:`1px solid rgba(255,255,255,.08)`,borderLeft:`3px solid ${ac}`}}>
+          {/* Header: heure + catégorie */}
+          <div style={{display:'flex',gap:6,marginBottom:5,alignItems:'center'}}>
+            {m.scheduledTime&&<span style={{fontSize:11,fontFamily:'var(--fb)',color:ac,fontWeight:600}}>{m.scheduledTime}</span>}
+            <span style={{fontSize:10,opacity:.5,fontFamily:'var(--fb)',color:tc,textTransform:'uppercase',letterSpacing:.8}}>{m.category}{m.round&&` · ${m.round}`}</span>
+            {dur2&&<span style={{fontSize:10,opacity:.45,fontFamily:'var(--fb)',color:tc,marginLeft:'auto'}}>⏱{dur2}</span>}
+          </div>
+          {/* Tableau scoreboard */}
+          <table className="tv-sb-table">
+            <tbody>
+              {[0,1].map(pi=>{
+                const won=m.winner===pi+1;
+                return(
+                  <tr key={pi} style={{background:won?`rgba(255,215,0,.08)`:'transparent'}}>
+                    {/* Indicateur vainqueur */}
+                    <td style={{width:14,paddingLeft:2,paddingRight:0}}>
+                      {won&&<span style={{color:ac,fontSize:12,lineHeight:1}}>▶</span>}
+                    </td>
+                    {/* Nom */}
+                    <td className="tv-sb-name" style={{color:won?ac:tc,opacity:won?1:.55,paddingLeft:4,maxWidth:100,overflow:'hidden',textOverflow:'ellipsis',fontSize:12}}>
+                      {pi===0?m.player1:m.player2}
+                    </td>
+                    {/* Scores par set */}
+                    {m.sets.map((s,i)=>{
+                      const setDone=checkSetWon(s)||(i===m.sets.length-1);
+                      const setWon=s[pi]>s[1-pi]&&setDone;
+                      return(
+                        <td key={i} className="tv-sb-set"
+                          style={{color:setWon?'#fff':tc,opacity:setWon?1:.4,fontWeight:setWon?900:600,background:setWon?`rgba(255,255,255,.06)`:'transparent',borderRadius:2}}>
+                          {s[pi]}
+                        </td>
+                      );
+                    })}
+                    {/* Sets gagnés */}
+                    <td className="tv-sb-won" style={{color:won?ac:'rgba(255,255,255,.25)',paddingLeft:4}}>
+                      {sw[pi]}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      );
+    }
+
+    // ── Match en cours ou à venir
+    return(
+      <div style={{padding:'9px 12px',borderBottom:`1px solid rgba(255,255,255,.07)`,borderLeft:`3px solid ${isLive?pc:'transparent'}`,background:isLive?'rgba(255,255,255,.06)':'transparent'}}>
+        <div style={{display:'flex',gap:6,marginBottom:4,alignItems:'center'}}>
+          {isLive
+            ?<span style={{display:'flex',alignItems:'center',gap:4,fontSize:10,color:'#ff4444',fontWeight:700,letterSpacing:1}}><span className="dot" style={{width:6,height:6,background:'#ff4444'}}/>LIVE</span>
+            :<span style={{fontSize:11,color:ac,fontWeight:600,fontFamily:'var(--fb)'}}>{m.scheduledTime||'À venir'}</span>
+          }
+          <span style={{fontSize:10,opacity:.4,fontFamily:'var(--fb)',color:tc,textTransform:'uppercase',letterSpacing:.5}}>{m.category}</span>
+          {isLive&&dur2&&<span style={{fontSize:10,opacity:.45,fontFamily:'var(--fb)',color:tc,marginLeft:'auto'}}>⏱{dur2}</span>}
+        </div>
+        {[0,1].map(pi=>(
+          <div key={pi} style={{display:'flex',alignItems:'center',gap:4,marginTop:pi===0?0:3}}>
+            {isLive&&m.server===pi+1&&<span style={{width:6,height:6,borderRadius:'50%',background:pc,display:'inline-block',flexShrink:0,boxShadow:`0 0 6px ${pc}`}}/>}
+            {!(isLive&&m.server===pi+1)&&<span style={{width:6,display:'inline-block'}}/>}
+            <span style={{flex:1,fontSize:12,fontWeight:600,fontFamily:'var(--fd)',color:tc,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
+              {pi===0?m.player1:m.player2}
+            </span>
+            {isLive&&m.sets.map((s,i)=>(
+              <span key={i} style={{width:18,textAlign:'center',fontSize:13,fontWeight:700,color:i===m.sets.length-1?'#fff':tc,opacity:i===m.sets.length-1?1:.5}}>{s[pi]}</span>
+            ))}
+          </div>
+        ))}
+        {m.round&&<div style={{fontSize:10,opacity:.3,marginTop:4,fontFamily:'var(--fb)',color:tc,textTransform:'uppercase',letterSpacing:.5}}>{m.round}</div>}
+      </div>
+    );
+  };
+
+  return(
+    <div className="tv-wrap" style={{background:settings.bgImage?`url(${settings.bgImage}) center/cover no-repeat fixed`:bg,color:tc}}>
+      <div style={{position:'fixed',inset:0,zIndex:0}}>
+        <div style={{position:'absolute',inset:0,background:settings.bgImage?'rgba(0,0,0,.65)':bg}}/>
+        {!settings.bgImage&&<div style={{position:'absolute',inset:0,background:`radial-gradient(ellipse at 20% 50%, ${pc}18 0%, transparent 60%), radial-gradient(ellipse at 80% 50%, ${ac}0f 0%, transparent 60%)`}}/>}
+        <div style={{position:'absolute',inset:0,opacity:.025,backgroundImage:'repeating-linear-gradient(0deg,transparent,transparent 3px,rgba(255,255,255,.4)3px,rgba(255,255,255,.4)4px),repeating-linear-gradient(90deg,transparent,transparent 60px,rgba(255,255,255,.04)60px,rgba(255,255,255,.04)61px)'}}/>
+        <div style={{position:'absolute',top:0,left:0,right:0,height:3,background:`linear-gradient(90deg,transparent 0%,${pc} 30%,${ac} 50%,${pc} 70%,transparent 100%)`}}/>
+        <div style={{position:'absolute',bottom:0,left:0,right:0,height:2,background:`linear-gradient(90deg,transparent,${pc}88,${ac}88,${pc}88,transparent)`,opacity:.8}}/>
+      </div>
+      <div className="tv-body">
+        <div className="tv-hdr">
+          <div className="flex ai gap4">
+            {settings.clubLogo&&<img src={settings.clubLogo} style={{height:60,objectFit:'contain',filter:'drop-shadow(0 0 8px rgba(255,255,255,.2))'}} alt="logo"/>}
+            <div>
+              <div style={{fontFamily:'var(--fb)',fontSize:11,letterSpacing:4,textTransform:'uppercase',opacity:.7,color:tc,marginBottom:5}}>{settings.clubName}</div>
+              <div style={{fontFamily:'var(--fd)',fontSize:'clamp(22px,3.2vw,36px)',fontWeight:900,color:'#fff',letterSpacing:'-.5px',lineHeight:1,textShadow:`0 0 30px ${pc}66`}}>{settings.tournamentName}</div>
+            </div>
+          </div>
+          <div style={{textAlign:'right'}}>
+            <div style={{fontFamily:'var(--fd)',fontSize:'clamp(32px,5vw,52px)',fontWeight:900,letterSpacing:'-2px',fontVariantNumeric:'tabular-nums',color:'#fff',lineHeight:1,textShadow:`0 0 20px ${pc}88`}}>{time.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'})}</div>
+            <div style={{fontFamily:'var(--fb)',fontSize:13,opacity:.55,marginTop:5,color:tc,letterSpacing:.5}}>{time.toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'})}</div>
+          </div>
+        </div>
+        <div className="tv-content">
+          <div className="tv-sidebar">
+            <div className="tv-sb-label" style={{color:tc}}>Programme du jour</div>
+            {todayM.length===0?<div style={{padding:'20px 14px',opacity:.4,fontSize:13,fontFamily:'var(--fb)',color:tc}}>Aucun match programmé</div>:todayM.map(m=><SBItem key={m.id} m={m}/>)}
+          </div>
+          <div className="tv-main">
+            {live.length===0?(
+              <div className="tv-empty" style={{color:tc}}><div style={{fontSize:72}}>🎾</div><div style={{fontFamily:'var(--fd)',fontSize:24,fontWeight:700}}>Aucun match en cours</div><div style={{fontFamily:'var(--fb)',fontSize:14}}>Les scores apparaîtront ici en temps réel</div></div>
+            ):(
+              <>
+                {live.length>2&&<div style={{display:'flex',gap:6,justifyContent:'center',marginBottom:14}}>{Array.from({length:Math.ceil(live.length/2)}).map((_,i)=><div key={i} style={{width:8,height:8,borderRadius:'50%',background:Math.floor(scrollIdx/2)===i?pc:'rgba(255,255,255,.2)',cursor:'pointer'}} onClick={()=>setScrollIdx(i*2)}/>)}</div>}
+                <div className={`tv-live-grid ${displayed.length>1?'tv-live-2':'tv-live-1'}`}>{displayed.map(m=><TVMatch key={m.id} match={m}/>)}</div>
+              </>
+            )}
+          </div>
+        </div>
+        <div className="tv-ftr">
+          {settings.sponsors?.length>0&&<><span style={{fontSize:11,letterSpacing:2,textTransform:'uppercase',opacity:.4,fontFamily:'var(--fb)',color:tc,whiteSpace:'nowrap'}}>Partenaires</span><div style={{display:'flex',gap:20,alignItems:'center',overflow:'hidden'}}>{settings.sponsors.map((sp,i)=><div key={i} style={{opacity:i===sponsorIdx?.95:.4,transition:'opacity .5s',flexShrink:0}}>{sp.logo?<img src={sp.logo} alt={sp.name} style={{height:26,objectFit:'contain'}}/>:<span style={{fontFamily:'var(--fd)',fontSize:13,fontWeight:700,color:tc}}>{sp.name}</span>}</div>)}</div></>}
+          {lastCmt&&<div style={{flex:1,overflow:'hidden',fontFamily:'var(--fb)',fontSize:13,opacity:.75,color:tc,whiteSpace:'nowrap',textOverflow:'ellipsis'}}>💬 {lastCmt.text}</div>}
+          {isPublic&&<div style={{marginLeft:'auto',display:'flex',gap:8,alignItems:'center'}}>
+            {user?<><input value={cmtIn} onChange={e=>setCmtIn(e.target.value)} onKeyDown={e=>{if(e.key==='Enter'&&cmtIn.trim()){onComment(cmtIn);setCmtIn('');}}} placeholder="Votre commentaire…" style={{padding:'5px 10px',borderRadius:'var(--r)',border:'1px solid rgba(255,255,255,.2)',background:'rgba(255,255,255,.1)',color:tc,fontSize:13,width:180,fontFamily:'var(--fb)'}}/><button onClick={()=>{if(cmtIn.trim()){onComment(cmtIn);setCmtIn('');}}} style={{padding:'5px 10px',borderRadius:'var(--r)',background:pc,color:'#fff',border:'none',cursor:'pointer',fontSize:13}}>Envoyer</button></>
+            :<button onClick={onGoogleLogin} style={{padding:'5px 12px',borderRadius:'var(--r)',background:'rgba(255,255,255,.1)',color:tc,border:'1px solid rgba(255,255,255,.2)',cursor:'pointer',fontSize:12}}>Se connecter pour commenter</button>}
+          </div>}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── HistoryPage ──────────────────────────────────────────────────
+function HistoryPage({data,comments,user,onComment,onGoogleLogin}){
+  const {matches,settings}=data;
+  const [sel,setSel]=useState(todayStr());
+  const [fbTxt,setFbTxt]=useState('');
+  const allDates=useMemo(()=>{const ds=[...new Set(matches.map(m=>m.date).filter(Boolean))].sort().reverse();if(!ds.includes(todayStr()))ds.unshift(todayStr());return ds;},[matches]);
+  const dayM=useMemo(()=>matches.filter(m=>m.date===sel).sort((a,b)=>timeToMin(a.scheduledTime)-timeToMin(b.scheduledTime)),[matches,sel]);
+  const dayCmts=useMemo(()=>(comments||[]).filter(c=>c.date===sel),[comments,sel]);
+  const genFB=()=>{
+    const lines=[`🎾 Résultats – ${fmtDateFR(sel)}`,`${settings.clubName} · ${settings.tournamentName}`,''];
+    const fin=dayM.filter(m=>m.status==='finished');
+    const grp={};fin.forEach(m=>{const k=m.category||'Divers';(grp[k]=grp[k]||[]).push(m);});
+    Object.entries(grp).forEach(([cat,ms])=>{lines.push(`📌 ${cat}`);ms.forEach(m=>{const sw=countWonSets(m),winner=m.winner===1?m.player1:m.player2,loser=m.winner===1?m.player2:m.player1,dur=m.startedAt&&m.endedAt?` (${fmtDur(m.endedAt-m.startedAt)})`:'';lines.push(`✅ ${winner} bat ${loser} : ${scoreText(m)}${dur}`);});lines.push('');});
+    lines.push(`#tennis #${settings.clubName.replace(/\s/g,'')} #tournoi`);
+    return lines.join('\n');
+  };
+  return(
+    <div className="hist-wrap">
+      <div className="flex ai jb mb4" style={{flexWrap:'wrap',gap:12}}><h1>Résultats & Historique</h1><button className="btn btn-p" onClick={()=>setFbTxt(genFB())}>📘 Résumé Facebook</button></div>
+      <div style={{display:'flex',gap:8,flexWrap:'wrap',marginBottom:24}}>
+        {allDates.map(d=><button key={d} onClick={()=>setSel(d)} style={{padding:'6px 14px',borderRadius:20,border:'1px solid var(--bdr)',background:d===sel?'var(--clay)':'var(--white)',color:d===sel?'#fff':'var(--txt)',fontSize:13,cursor:'pointer',transition:'all .15s'}}>{d===todayStr()?"Aujourd'hui":fmtDateFR(d).replace(/^\w+,?\s*/,'')}</button>)}
+      </div>
+      {dayM.length===0?<div className="card" style={{textAlign:'center',padding:40,color:'var(--txt-m)'}}><div style={{fontSize:32,marginBottom:10}}>📅</div><p>Aucun match</p></div>
+      :dayM.map(m=>{
+        const sw=countWonSets(m),isDone=m.status==='finished',isLive=m.status==='live',dur=m.startedAt&&m.endedAt?fmtDur(m.endedAt-m.startedAt):'';
+        return<div key={m.id} className="card mb3" style={{borderLeft:`3px solid ${isLive?'var(--red)':isDone?'var(--green)':'var(--bdr)'}`}}>
+          <div className="flex ai gap2 mb2" style={{flexWrap:'wrap'}}>
+            {m.scheduledTime&&<span style={{fontFamily:'var(--fd)',fontWeight:700,color:'var(--clay)'}}>{m.scheduledTime}</span>}
+            <span className={`badge ${isLive?'b-live':isDone?'b-done':'b-pend'}`}>{isLive?'En direct':isDone?'Terminé':'À venir'}</span>
+            {m.category&&<span style={{fontSize:13,color:'var(--txt-m)'}}>{m.category}</span>}
+            {m.round&&<span style={{fontSize:12,color:'var(--txt-l)'}}>• {m.round}</span>}
+            {dur&&<span className="badge b-info" style={{marginLeft:'auto'}}>⏱ {dur}</span>}
+          </div>
+          <ScoreDisplay match={m}/>
+          {m.winner&&<div style={{marginTop:8,padding:'6px 10px',background:'var(--green-l)',borderRadius:'var(--r)',color:'var(--green)',fontWeight:600,fontSize:14,fontFamily:'var(--fd)'}}>🏆 {m.winner===1?m.player1:m.player2}</div>}
+        </div>;
+      })}
+      <div className="sep"/>
+      <h2 className="mb3">💬 Commentaires</h2>
+      {user?<div className="flex ai gap2 mb4"><img src={user.photoURL||''} alt="" style={{width:34,height:34,borderRadius:'50%'}}/><input className="inp" placeholder="Laisser un commentaire…" onKeyDown={e=>{if(e.key==='Enter'&&e.target.value.trim()){onComment(e.target.value);e.target.value='';}}} /></div>
+      :<div className="flex ai gap3 mb4" style={{padding:'12px 14px',background:'var(--sand-l)',borderRadius:'var(--rl)'}}><span style={{color:'var(--txt-m)',fontSize:14}}>Connectez-vous pour commenter</span><button className="btn btn-sm btn-p" onClick={onGoogleLogin}>Se connecter avec Google</button></div>}
+      {dayCmts.length===0&&<p style={{color:'var(--txt-l)',fontSize:14}}>Aucun commentaire.</p>}
+      {dayCmts.map(c=><div key={c.id} className="cmt-item"><img src={c.photoURL||`https://ui-avatars.com/api/?name=${encodeURIComponent(c.displayName||'?')}&size=32`} className="cmt-avatar" alt=""/><div><div style={{fontSize:13,fontWeight:600,color:'var(--txt-m)'}}>{c.displayName||'Anonyme'}</div><div style={{fontSize:15,marginTop:2}}>{c.text}</div><div style={{fontSize:11,color:'var(--txt-l)',marginTop:2}}>{c.ts?new Date(c.ts).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}):''}</div></div></div>)}
+      {fbTxt&&<div className="overlay" onClick={()=>setFbTxt('')}><div className="modal" onClick={e=>e.stopPropagation()}><h2 className="mb3">📘 Résumé Facebook</h2><textarea readOnly value={fbTxt} style={{width:'100%',height:300,padding:10,borderRadius:'var(--r)',border:'1px solid var(--bdr)',fontFamily:'var(--fb)',fontSize:14,background:'var(--cream)',resize:'none'}}/><div className="flex je gap3" style={{marginTop:14}}><button className="btn" onClick={()=>setFbTxt('')}>Fermer</button><button className="btn btn-p" onClick={()=>navigator.clipboard.writeText(fbTxt).then(()=>alert('✅ Copié !')).catch(()=>{})}>📋 Copier</button></div></div></div>}
+    </div>
+  );
+}
+
+// ── App principal ────────────────────────────────────────────────
+function App(){
+  const [data,setData]=useState(DEFAULT_DATA);
+  const [fbConfig,setFbConfig]=useState(null);
+  const [fbStatus,setFbStatus]=useState('disconnected');
+  const [user,setUser]=useState(null);
+  const [comments,setComments]=useState([]);
+  const [ready,setReady]=useState(false);
+  const [tab,setTab]=useState('matches');
+  const [srvModal,setSrvModal]=useState(null);
+  const skipRef=useRef(false);
+  const mode=useMemo(()=>new URLSearchParams(location.search).get('v')||'admin',[]);
+
+  useEffect(()=>{
+    (async()=>{
+      const [cfg,d]=await Promise.all([loadFBCfg(),loadData()]);
+      if(d)setData(d);
+      if(cfg)setFbConfig(cfg);
+      setReady(true);
+    })();
+  },[]);
+
+  useEffect(()=>{
+    if(!fbConfig?.databaseURL)return;
+    const ok=initFB(fbConfig);
+    if(!ok){setFbStatus('error');return;}
+    setFbStatus('connected');
+    const dRef=_db.ref('tls_data');
+    dRef.on('value',snap=>{if(skipRef.current){skipRef.current=false;return;}const v=snap.val();if(v){const d=typeof v==='string'?JSON.parse(v):v;setData(d);saveData(d);}});
+    const cRef=_db.ref('tls_comments');
+    cRef.on('value',snap=>{const v=snap.val();if(v)setComments(Object.values(v).sort((a,b)=>(a.ts||0)-(b.ts||0)));});
+    _auth.onAuthStateChanged(u=>setUser(u));
+    return()=>{dRef.off();cRef.off();};
+  },[fbConfig]);
+
+  const update=useCallback(nd=>{
+    setData(nd);saveData(nd);
+    if(_db){skipRef.current=true;_db.ref('tls_data').set(deepCopy(nd)).catch(()=>{});}
+  },[]);
+  const updM=fn=>update({...data,matches:fn(data.matches)});
+
+  const googleLogin=async()=>{
+    if(!_auth)return alert('Configurez Firebase d\'abord (onglet Paramètres).');
+    try{await _auth.signInWithPopup(new firebase.auth.GoogleAuthProvider());}catch(e){console.error(e);}
+  };
+  const postComment=txt=>{
+    if(!_db||!user)return;
+    _db.ref('tls_comments').push({text:txt,displayName:user.displayName,photoURL:user.photoURL,uid:user.uid,ts:Date.now(),date:todayStr()});
+  };
+
+  // Démarrer un match (depuis Matchs ou Marqueur)
+  const handleStartWithServer=m=>setSrvModal(m);
+  const confirmServer=sv=>{
+    const m=srvModal;setSrvModal(null);
+    updM(ms=>ms.map(x=>x.id===m.id?{...x,status:'live',server:sv,firstServer:sv,startedAt:x.startedAt||Date.now()}:x));
+  };
+
+  if(!ready)return<div style={{display:'flex',alignItems:'center',justifyContent:'center',height:'100vh',fontFamily:'var(--fd)',color:'var(--txt-m)',fontSize:18}}>Chargement…</div>;
+
+  if(mode==='tv')return<TVDisplay data={data} comments={comments} user={user} onComment={postComment} onGoogleLogin={googleLogin} isPublic={true}/>;
+  if(mode==='history')return<><HistoryPage data={data} comments={comments} user={user} onComment={postComment} onGoogleLogin={googleLogin}/><div style={{position:'fixed',top:12,right:14,zIndex:999,display:'flex',gap:8}}><a href={location.pathname} className="btn btn-sm">← Admin</a><a href={`${location.pathname}?v=tv`} className="btn btn-sm btn-dk">📺 TV</a></div></>;
+
+  const tvURL=`${location.href.split('?')[0]}?v=tv`;
+  const liveN=data.matches.filter(m=>m.status==='live').length;
+
+  return(
+    <div className="shell">
+      <div className="topbar">
+        <div><div className="topbar-title">{data.settings.tournamentName}</div><div style={{fontSize:11,color:'var(--sand-d)',letterSpacing:'1.5px',textTransform:'uppercase'}}>{data.settings.clubName}</div></div>
+        <div className="flex ai gap2 ml-a" style={{flexWrap:'wrap'}}>
+          {fbStatus==='connected'
+            ?<span style={{fontSize:12,padding:'3px 10px',borderRadius:20,background:'rgba(45,122,79,.2)',color:'#5fb88a',border:'1px solid rgba(45,122,79,.3)'}}>🔥 Synchronisé</span>
+            :<span style={{fontSize:12,padding:'3px 10px',borderRadius:20,background:'rgba(201,162,39,.1)',color:'#c9a227',border:'1px solid rgba(201,162,39,.3)',cursor:'pointer'}} onClick={()=>setTab('settings')}>○ Sans sync</span>
+          }
+          {liveN>0&&<span className="badge b-live"><span className="dot"/>{liveN} en direct</span>}
+          <a href={tvURL} target="_blank" className="btn btn-dk btn-sm">📺 TV</a>
+          <a href={`${location.href.split('?')[0]}?v=history`} target="_blank" className="btn btn-sm">📊 Historique</a>
+          <button className="btn btn-sm" onClick={()=>navigator.clipboard.writeText(tvURL).then(()=>alert('✅ Lien TV copié !')).catch(()=>{})}>📋 Lien TV</button>
+        </div>
+      </div>
+      <div className="tabbar">
+        {[['matches','🎾 Matchs'],['scorer','📱 Marqueur'],['settings','⚙ Paramètres']].map(([k,lbl])=>(
+          <button key={k} className={`tabbtn${tab===k?' on':''}`} onClick={()=>setTab(k)}>{lbl}</button>
+        ))}
+      </div>
+      <div className="page">
+        {tab==='matches'&&<MatchesTab matches={data.matches} settings={data.settings}
+          onAdd={fd=>updM(ms=>[...ms,newMatch(fd)])}
+          onEdit={(id,fd)=>updM(ms=>ms.map(m=>m.id===id?{...m,...fd}:m))}
+          onDelete={id=>updM(ms=>ms.filter(m=>m.id!==id))}
+          onSetStatus={(id,st)=>updM(ms=>ms.map(m=>m.id===id?{...m,status:st,startedAt:st==='live'&&!m.startedAt?Date.now():m.startedAt,endedAt:st==='finished'&&!m.endedAt?Date.now():m.endedAt}:m))}
+          onStartWithServer={handleStartWithServer}
+          onImport={ms=>updM(prev=>[...prev,...ms])}
+          onCorrect={m=>updM(ms=>ms.map(x=>x.id===m.id?m:x))}/>
+        }
+        {tab==='scorer'&&<ScorerTab matches={data.matches} settings={data.settings}
+          onAddGame={(id,p)=>updM(ms=>ms.map(m=>m.id===id?addGame(m,p,data.settings):m))}
+          onUndo={id=>updM(ms=>ms.map(m=>m.id===id?undoGame(m):m))}
+          onServer={(id,sv)=>updM(ms=>ms.map(m=>m.id===id?{...m,server:sv}:m))}
+          onSetStatus={(id,st)=>updM(ms=>ms.map(m=>m.id===id?{...m,status:st,endedAt:st==='finished'?Date.now():m.endedAt}:m))}
+          onStartWithServer={handleStartWithServer}/>
+        }
+        {tab==='settings'&&<SettingsTab settings={data.settings}
+          onSave={s=>update({...data,settings:s})}
+          fbConfig={fbConfig}
+          onFBSave={async cfg=>{await saveFBCfg(cfg);setFbConfig(cfg);}}
+          fbStatus={fbStatus}/>
+        }
+      </div>
+      {srvModal&&<ServerSelectModal match={srvModal} onStart={confirmServer} onClose={()=>setSrvModal(null)}/>}
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+</body>
+</html>
