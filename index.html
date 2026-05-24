@@ -1,3 +1,5 @@
+
+
 <!DOCTYPE html>
 <html lang="fr">
 <head>
@@ -139,7 +141,12 @@ h3{font-family:var(--fd);font-size:15px;font-weight:600}
 </style>
 </head>
 <body>
-<div id="root"></div>
+<div id="root">
+  <div id="initial-loading" style="display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:100vh; font-family:sans-serif; background:#faf6f0; color:#1a0f08; padding:24px; text-align:center;">
+    <h2 id="loading-status" style="margin-bottom:10px;">Chargement de l'application...</h2>
+    <p id="loading-error" style="color:#b42828; font-size:14px; max-width:500px; display:none; background:rgba(180,40,40,0.07); padding:12px; border:1px solid rgba(180,40,40,0.2); border-radius:4px; font-family:monospace; white-space:pre-wrap;"></p>
+  </div>
+</div>
 <script type="text/babel">
 const { useState, useEffect, useRef, useCallback, useMemo } = React;
 
@@ -155,21 +162,177 @@ const DEFAULT_FORMAT_LABELS = {
   doubles:'Doubles (Bo3 sans avantage + super TB)', super_tb:'Super Tie-break (10 pts)',
 };
 const DEFAULT_CATS = ['SM Senior','SM Vétérans 35+','SM 45 ans','SD Senior','DM Senior','DD Senior','MX Senior','U18','U14'];
+
+// ── Thèmes visuels ────────────────────────────────────────────────
+const THEMES = {
+  terre_battue:{
+    label:'🟫 Terre Battue', subtitle:'Roland Garros',
+    layout:'classic',
+    admin:{clay:'#c45c26',clayH:'#a34520',clayPale:'rgba(196,92,38,.09)'},
+    tv:{bgColor:'#120701',primaryColor:'#e05c20',textColor:'#fdf3e7',accentColor:'#f0c040'},
+    design:{
+      cardRadius:6, cardBorder:'2px solid',
+      scoreFontSize:'clamp(26px,3.5vw,42px)', nameFontSize:'clamp(18px,2.8vw,28px)',
+      headerBg:'rgba(0,0,0,.55)', cardBg:'rgba(255,255,255,.05)',
+      pattern:'radial-gradient(ellipse at 20% 80%, rgba(196,92,38,.15) 0%, transparent 60%)',
+    },
+  },
+  wimbledon:{
+    label:'🟩 Gazon', subtitle:'Wimbledon',
+    layout:'elegant',
+    admin:{clay:'#3d6b4f',clayH:'#2a5038',clayPale:'rgba(61,107,79,.09)'},
+    tv:{bgColor:'#050e08',primaryColor:'#4a9966',textColor:'#f0f8f2',accentColor:'#7b2d8b'},
+    design:{
+      cardRadius:0, cardBorder:'1px solid',
+      scoreFontSize:'clamp(28px,3.8vw,46px)', nameFontSize:'clamp(16px,2.4vw,26px)',
+      headerBg:'rgba(5,14,8,.8)', cardBg:'rgba(255,255,255,.04)',
+      pattern:'repeating-linear-gradient(0deg,transparent,transparent 40px,rgba(74,153,102,.03)40px,rgba(74,153,102,.03)41px)',
+    },
+  },
+  us_open:{
+    label:'🟦 Dur Bleu', subtitle:'US Open',
+    layout:'stadium',
+    admin:{clay:'#1560a0',clayH:'#0d4580',clayPale:'rgba(21,96,160,.09)'},
+    tv:{bgColor:'#020b18',primaryColor:'#1a7fd4',textColor:'#e8f4ff',accentColor:'#e8571e'},
+    design:{
+      cardRadius:4, cardBorder:'1px solid',
+      scoreFontSize:'clamp(40px,6vw,80px)', nameFontSize:'clamp(14px,1.8vw,20px)',
+      headerBg:'rgba(2,11,24,.9)', cardBg:'rgba(26,127,212,.06)',
+      pattern:'radial-gradient(ellipse at 50% 100%, rgba(26,127,212,.2) 0%, transparent 70%)',
+    },
+  },
+  australian:{
+    label:'🩵 Ciel & Soleil', subtitle:'Australian Open',
+    layout:'modern',
+    admin:{clay:'#0077b6',clayH:'#005a8a',clayPale:'rgba(0,119,182,.09)'},
+    tv:{bgColor:'#001830',primaryColor:'#00b4d8',textColor:'#ffffff',accentColor:'#ffe500'},
+    design:{
+      cardRadius:12, cardBorder:'0px solid',
+      scoreFontSize:'clamp(30px,4vw,52px)', nameFontSize:'clamp(16px,2.2vw,24px)',
+      headerBg:'rgba(0,24,48,.6)', cardBg:'rgba(0,180,216,.08)',
+      pattern:'radial-gradient(ellipse at 80% 20%, rgba(0,180,216,.15) 0%, transparent 50%), radial-gradient(ellipse at 20% 80%, rgba(255,229,0,.08) 0%, transparent 50%)',
+    },
+  },
+  moderne:{
+    label:'⚡ Moderne', subtitle:'Dark & Electric',
+    layout:'stadium',
+    admin:{clay:'#7c3aed',clayH:'#6020cc',clayPale:'rgba(124,58,237,.09)'},
+    tv:{bgColor:'#060010',primaryColor:'#9d4edd',textColor:'#e8e0ff',accentColor:'#00d4ff'},
+    design:{
+      cardRadius:8, cardBorder:'1px solid',
+      scoreFontSize:'clamp(44px,7vw,90px)', nameFontSize:'clamp(13px,1.6vw,18px)',
+      headerBg:'rgba(6,0,16,.9)', cardBg:'rgba(157,78,221,.07)',
+      pattern:'radial-gradient(ellipse at 30% 50%, rgba(157,78,221,.2) 0%, transparent 50%), radial-gradient(ellipse at 70% 50%, rgba(0,212,255,.1) 0%, transparent 50%)',
+    },
+  },
+  prestige:{
+    label:'👑 Prestige', subtitle:'Marine & Or',
+    layout:'elegant',
+    admin:{clay:'#1e3a5f',clayH:'#142845',clayPale:'rgba(30,58,95,.09)'},
+    tv:{bgColor:'#020810',primaryColor:'#2563eb',textColor:'#f0f4f8',accentColor:'#c9a84c'},
+    design:{
+      cardRadius:0, cardBorder:'1px solid',
+      scoreFontSize:'clamp(28px,3.5vw,44px)', nameFontSize:'clamp(16px,2.3vw,26px)',
+      headerBg:'rgba(2,8,16,.85)', cardBg:'rgba(201,168,76,.05)',
+      pattern:'repeating-linear-gradient(90deg,transparent,transparent 80px,rgba(201,168,76,.04)80px,rgba(201,168,76,.04)81px)',
+    },
+  },
+};
+
 const DEFAULT_SETTINGS = {
   tournamentName:'Tournoi de Tennis', clubName:'Tennis Club',
   clubLogo:'', bgColor:'#0d1117', bgImage:'',
   primaryColor:'#ff6b1a', textColor:'#ffffff', accentColor:'#ffd700',
   sponsors:[], sponsorInterval:10, scrollMode:'scroll',
   categories:[...DEFAULT_CATS], formatLabels:{...DEFAULT_FORMAT_LABELS},
+  players:[], courts:['Court N°1','Court N°2','Court Plastique'],
+  gsheetUrl:'', theme:'terre_battue', tvUrl:'', weatherLat:'', weatherLon:'', weatherCity:'',
 };
 const DEFAULT_DATA = { matches:[], settings:DEFAULT_SETTINGS };
 
+// Cherche un joueur dans la liste par correspondance de nom (insensible à la casse, partielle)
+function enrichFromPlayerList(players, name){
+  if(!players?.length||!name)return{};
+  const n=name.toLowerCase().replace(/\s+/g,' ').trim();
+  // Correspondance exacte d'abord, puis partielle
+  const found=players.find(p=>{
+    const pn=p.name.toLowerCase().replace(/\s+/g,' ').trim();
+    return pn===n||n.includes(pn)||pn.includes(n);
+  });
+  if(!found)return{};
+  return{club:found.club||'',ranking:found.ranking||''};
+}
+
+// Applique l'enrichissement sur un match importé
+function enrichMatch(match, players){
+  if(!players?.length)return match;
+  const e1=enrichFromPlayerList(players,match.player1);
+  const e2=enrichFromPlayerList(players,match.player2);
+  return{
+    ...match,
+    p1Club: match.p1Club||e1.club||'',
+    p2Club: match.p2Club||e2.club||'',
+    p1Ranking: match.p1Ranking||e1.ranking||'',
+    p2Ranking: match.p2Ranking||e2.ranking||'',
+  };
+}
+
 // ── Utilitaires ─────────────────────────────────────────────────
-const todayStr = () => new Date().toISOString().split('T')[0];
+const todayStr = () => {
+  const d=new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+};
+function pauseMatch(m){const r=deepCopy(m);if(r.status!=='live')return r;r.status='paused';r.pausedAt=Date.now();return r;}
+function resumeMatch(m){const r=deepCopy(m);if(r.status!=='paused')return r;r.totalPausedMs=(r.totalPausedMs||0)+(r.pausedAt?Date.now()-r.pausedAt:0);r.pausedAt=null;r.status='live';return r;}
+function getMatchDur(m,now){if(!m.startedAt)return'';const end=m.endedAt||(m.status==='paused'?m.pausedAt:now)||now;return fmtDur(end-m.startedAt-(m.totalPausedMs||0));}
 const deepCopy  = o => JSON.parse(JSON.stringify(o));
 const fmtDur    = ms => { if(!ms||ms<0)return''; const m=Math.floor(ms/60000),h=Math.floor(m/60),mm=m%60; return h>0?`${h}h${String(mm).padStart(2,'0')}`:`${m}'`; };
+
+// Hook responsive — adapte l'interface selon la largeur d'écran
+function useWindowWidth(){
+  const [w,setW]=useState(()=>window.innerWidth);
+  useEffect(()=>{
+    const h=()=>setW(window.innerWidth);
+    window.addEventListener('resize',h);
+    return()=>window.removeEventListener('resize',h);
+  },[]);
+  return w;
+}
 const fmtDateFR = d => { try{ return new Date(d+'T12:00:00').toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long',year:'numeric'}); }catch(e){return d;} };
 const scoreText = m => m.sets.map(s=>`${s[0]}-${s[1]}`).join(' ');
+
+// Calcule les stats de service depuis l'historique du match
+// Retourne [{won, lost}, {won, lost}] pour joueur 1 et joueur 2
+function computeServiceStats(match){
+  const history=match.history||[];
+  if(!history.length)return null;
+  const states=[...history,{sets:match.sets,server:match.server}];
+  const stats=[{won:0,lost:0},{won:0,lost:0}];
+  for(let i=0;i<history.length;i++){
+    const before=history[i], after=states[i+1];
+    const si=before.sets.length-1;
+    if(!after.sets[si])continue;
+    const b=before.sets[si], a=after.sets[si];
+    if(!a||( a[0]===b[0]&&a[1]===b[1] ))continue; // aucun jeu complété (mode point)
+    const winner=a[0]>b[0]?0:1; // 0=p1, 1=p2
+    const server=before.server-1; // 0-indexed
+    if(winner===server)stats[server].won++;
+    else stats[server].lost++;
+  }
+  return stats;
+}
+// Découpe un nom de double "J1 / J2" avec classements et clubs correspondants
+const splitDouble=(name,ranking,club)=>{
+  if(!name)return[{n:name,r:ranking,c:club}];
+  const ns=name.split(' / ');
+  const rs=(ranking||'').split(' / ');
+  const cs=(club||'').split(' / ');
+  if(ns.length>=2)return[
+    {n:ns[0].trim(),r:(rs[0]||'').trim(),c:(cs[0]||'').trim()},
+    {n:ns[1].trim(),r:(rs[1]||rs[0]||'').trim(),c:(cs[1]||cs[0]||'').trim()},
+  ];
+  return[{n:name,r:ranking||'',c:club||''}];
+};
 const getFmt    = (m,s) => ({ ...BASE_FORMATS[m.format]||BASE_FORMATS.bo3, label:(s?.formatLabels?.[m.format])||DEFAULT_FORMAT_LABELS[m.format]||m.format });
 // Pour la logique interne (addGame, recalcWinner) – compte tout set où un joueur mène
 const countSW   = sets => sets.reduce((a,s)=>{ if(s[0]>s[1])a[0]++; else if(s[1]>s[0])a[1]++; return a; },[0,0]);
@@ -199,7 +362,7 @@ const ls = {
 // ⚙ Paramètres du projet → Vos applications → Web
 // ================================================================
 const FIREBASE_CONFIG_BUILTIN = {
-  apiKey:     "AIzaSyC6oQe_4I_Q1AnA9E_2grgDocR3yA4Viz8",
+  apiKey: "AIzaSyC6oQe_4I_Q1AnA9E_2grgDocR3yA4Viz8",
   authDomain: "open-270b9.firebaseapp.com",
   databaseURL: "https://open-270b9-default-rtdb.europe-west1.firebasedatabase.app",
   projectId: "open-270b9",
@@ -216,7 +379,7 @@ const loadFBCfg = async()=>{
   return ls.get('fb_cfg')||await IDB.get('fb_cfg');
 };
 const saveFBCfg = async c=>{ls.set('fb_cfg',c);await IDB.set('fb_cfg',c)};
-const loadData  = async()=>ls.get('app_data')||await IDB.get('app_data')||DEFAULT_DATA;
+const loadData  = async()=>{const d=ls.get('app_data')||await IDB.get('app_data');if(!d)return DEFAULT_DATA;return{...DEFAULT_DATA,...d,matches:Array.isArray(d.matches)?d.matches:[],settings:{...DEFAULT_SETTINGS,...(d.settings||{})}};};
 const saveData  = async d=>{ls.set('app_data',d);await IDB.set('app_data',d)};
 
 // ── Firebase ────────────────────────────────────────────────────
@@ -224,11 +387,19 @@ let _db=null, _auth=null;
 function initFB(cfg){
   try{
     if(!cfg?.databaseURL)return false;
-    if(firebase.apps.length)firebase.app().delete().catch(()=>{});
+    // Réutiliser l'app existante si même databaseURL (évite le bug delete+init en race condition)
+    if(firebase.apps.length){
+      const existing=firebase.app();
+      if(existing.options.databaseURL===cfg.databaseURL){
+        _db=firebase.database(); _auth=firebase.auth();
+        return true;
+      }
+      existing.delete().catch(()=>{});
+    }
     firebase.initializeApp(cfg);
     _db=firebase.database(); _auth=firebase.auth();
     return true;
-  }catch(e){console.error(e);return false;}
+  }catch(e){console.error('initFB:',e);return false;}
 }
 
 // ── Moteur de score (niveau jeu) ────────────────────────────────
@@ -242,8 +413,123 @@ function newMatch(d){
     format:d.format||'bo3', status:'pending',
     sets:[[0,0]], server:1, firstServer:1, winner:null,
     scheduledTime:d.scheduledTime||'', startedAt:null, endedAt:null,
-    date:d.date||todayStr(), history:[], notes:d.notes||'', createdAt:Date.now()
+    date:d.date||todayStr(), history:[], notes:d.notes||'', createdAt:Date.now(),
+    wo:false, abandonBy:null, pausedAt:null, totalPausedMs:0,
+    scoringMode:'game', gameScore:[0,0], // 0=0, 1=15, 2=30, 3=40, 4=Adv
   };
+}
+
+// ── Logique point par point ───────────────────────────────────────
+const POINT_LABELS=['0','15','30','40','Ad'];
+function getGameScore(m){return m.gameScore||[0,0];}
+
+function addPoint(match, player, settings){
+  const m=deepCopy(match);
+  if(m.status!=='live')return m;
+  if(!m.gameScore)m.gameScore=[0,0];
+  const fmt=getFmt(m,settings);
+  const si=m.sets.length-1;
+  const isFinalSet=si===fmt.sets-1;
+  const isSuperTBFinal=fmt.finalSuper&&isFinalSet;
+  const isTBOnly=fmt.tbOnly;
+  const isTB=isSuperTBFinal||isTBOnly||(m.sets[si]&&m.sets[si][0]===6&&m.sets[si][1]===6&&!isSuperTBFinal&&!isTBOnly);
+  const noAd=!!fmt.noAd;
+  const pi=player-1, oi=1-pi;
+
+  // Sauvegarde pour undo
+  // Log du point : serveur + gagnant du point + contexte (pour stats)
+  const fmt2=getFmt(m,settings);
+  const si0=m.sets.length-1;
+  const isFinalSet0=si0===fmt2.sets-1;
+  const isTB0=(fmt2.finalSuper&&isFinalSet0)||fmt2.tbOnly||(m.sets[si0]&&m.sets[si0][0]===6&&m.sets[si0][1]===6);
+  const gs0=m.gameScore||[0,0];
+  // Est-ce un point de break ? (serveur en difficulté)
+  const serverPi=m.server-1, receiverPi=1-serverPi;
+  const isBreakPt=!isTB0&&(
+    (gs0[serverPi]===0&&gs0[receiverPi]===3)||
+    (gs0[serverPi]===1&&gs0[receiverPi]===3)||
+    (gs0[serverPi]===2&&gs0[receiverPi]===3)||
+    (gs0[serverPi]===3&&gs0[receiverPi]===4) // déuce-avantage relanceur
+  );
+  m.pointLog=[...(m.pointLog||[]),{server:m.server,winner:player,isTB:isTB0,isBreakPt,
+    serve:match._pendingServe||null,    // '1' | '2' | null
+    type:match._pendingType||null,      // 'ace'|'win'|'df'|'fe'|null
+  }];
+  m.history=[...(m.history||[]).slice(-200),deepCopy({sets:m.sets,server:m.server,status:m.status,winner:m.winner,endedAt:m.endedAt,gameScore:m.gameScore})];
+
+  if(isTB||isTBOnly||isSuperTBFinal){
+    // ── Tie-break : comptage brut ──────────────────────────────
+    const target=isSuperTBFinal||isTBOnly?10:7;
+    m.gameScore[pi]++;
+    const p=m.gameScore[pi], q=m.gameScore[oi];
+    const gameWon=p>=target&&p-q>=2;
+    // Changement de service tous les 2 pts dans TB
+    const total=m.gameScore[0]+m.gameScore[1];
+    if(total>0&&total%2===1) m.server=3-m.server;
+    if(gameWon){
+      m.gameScore=[0,0];
+      m.sets[si][pi]++;
+      m.server=3-m.server; // service change après jeu TB
+      const setWon=checkSetWon(m.sets[si])||(isSuperTBFinal||isTBOnly);
+      if(setWon){
+        const sw=countSW(m.sets),needed=isTBOnly?1:Math.ceil(fmt.sets/2);
+        if(sw[pi]>=needed){m.status='finished';m.winner=player;m.endedAt=Date.now();}
+        else if(m.sets.length<fmt.sets)m.sets.push([0,0]);
+      }
+    }
+  } else {
+    // ── Jeu normal ────────────────────────────────────────────
+    // g values : 0=0, 1=15, 2=30, 3=40, 4=Avantage (non-noAd uniquement)
+    const g=m.gameScore;
+    let gameWon=false;
+
+    if(g[oi]===4){
+      // Adversaire avait l'avantage → retour à 40-40 (déuce)
+      g[pi]=3; g[oi]=3;
+    } else if(g[pi]===4){
+      // pi a l'avantage → jeu gagné
+      gameWon=true;
+    } else if(g[pi]===3&&g[oi]===3){
+      // 40-40 (déuce ou noAd)
+      if(noAd){
+        // Format doubles : point décisif → jeu gagné direct
+        gameWon=true;
+      } else {
+        // Format simple : avantage
+        g[pi]=4;
+      }
+    } else if(g[pi]===3){
+      // 40-0, 40-15, 40-30 → jeu gagné
+      gameWon=true;
+    } else {
+      // 0→15, 15→30, 30→40
+      g[pi]++;
+    }
+
+    if(gameWon){
+      m.gameScore=[0,0];
+      m.sets[si][pi]++;
+      m.server=3-m.server;
+      const setWon=checkSetWon(m.sets[si]);
+      if(setWon){
+        const sw=countSW(m.sets),needed=Math.ceil(fmt.sets/2);
+        if(sw[pi]>=needed){m.status='finished';m.winner=player;m.endedAt=Date.now();}
+        else if(m.sets.length<fmt.sets)m.sets.push([0,0]);
+      }
+    }
+  }
+  m._pendingServe=null;
+  m._pendingType=null;
+  return m;
+}
+
+function undoPoint(match){
+  const m=deepCopy(match);
+  if(!m.history?.length)return m;
+  const prev=m.history[m.history.length-1];
+  m.history=m.history.slice(0,-1);
+  m.pointLog=(m.pointLog||[]).slice(0,-1);
+  return{...m,...prev,history:m.history,pointLog:m.pointLog};
 }
 
 function addGame(match, player, settings){
@@ -265,10 +551,19 @@ function addGame(match, player, settings){
 
 function undoGame(match){
   const m=deepCopy(match);
-  if(!m.history?.length)return m;
+  if(!m.history?.length){
+    // Pas d'historique : on remet juste le match en live sans vainqueur
+    m.status='live'; m.winner=null; m.endedAt=null;
+    return m;
+  }
   const prev=m.history[m.history.length-1];
   m.history=m.history.slice(0,-1);
-  return {...m,...prev};
+  const result={...m,...prev};
+  // Garantie absolue : après annulation, le match est toujours jouable
+  result.status='live';
+  result.winner=null;
+  result.endedAt=null;
+  return result;
 }
 
 function recalcWinner(match,settings){
@@ -359,15 +654,23 @@ function ScoreDisplay({match}){
   const sw=countWonSets(match);
   const row=pi=>{
     const won=match.winner===pi+1,lead=sw[pi]>sw[1-pi];
+    const pn=pi===0?match.player1:match.player2;
+    const pr=pi===0?match.p1Ranking:match.p2Ranking;
+    const pc=pi===0?match.p1Club:match.p2Club;
+    const parts=splitDouble(pn,pr,pc);
     return(
       <div className="srow" key={pi}>
         <div className="sname" style={{color:won?'var(--clay-h)':undefined}}>
-          {match.status==='live'&&match.server===pi+1&&<span style={{width:7,height:7,borderRadius:'50%',background:'var(--clay)',display:'inline-block',flexShrink:0}}/>}
-          <span style={{lineHeight:1.2}}>
-            <span>{pi===0?match.player1:match.player2}</span>
-            {(pi===0?match.p1Ranking:match.p2Ranking)&&<span style={{fontSize:11,color:'var(--txt-l)',fontFamily:'var(--fb)',fontWeight:400,marginLeft:5}}>{pi===0?match.p1Ranking:match.p2Ranking}</span>}
-            <br/><span style={{fontSize:11,color:'var(--txt-l)',fontFamily:'var(--fb)',fontWeight:400}}>{pi===0?match.p1Club:match.p2Club}</span>
-          </span>
+          {match.status==='live'&&match.server===pi+1&&<span style={{width:7,height:7,borderRadius:'50%',background:'var(--clay)',display:'inline-block',flexShrink:0,marginRight:2}}/>}
+          <div style={{lineHeight:1.35}}>
+            {parts.map((p,i)=>(
+              <div key={i}>
+                <span style={{fontWeight:600}}>{p.n}</span>
+                {p.r&&<span style={{fontSize:11,color:'var(--clay)',fontFamily:'var(--fb)',fontWeight:600,marginLeft:5}}>{p.r}</span>}
+                {p.c&&<span style={{fontSize:11,color:'var(--txt-l)',fontFamily:'var(--fb)',fontWeight:400,marginLeft:4}}>{p.c}</span>}
+              </div>
+            ))}
+          </div>
         </div>
         <div className="ssets">
           {match.sets.map((s,i)=>{const w=(s[pi]>s[1-pi])&&(match.sets.length>i+1||match.status==='finished');return<div key={i} className={`sset${w?' w':''}`}>{s[pi]}</div>;})}
@@ -428,20 +731,153 @@ function MatchModal({match,settings,onSave,onClose}){
 }
 
 // ── ServerSelectModal ────────────────────────────────────────────
-function ServerSelectModal({match,onStart,onClose}){
+function ServerSelectModal({match,settings,onStart,onClose}){
+  const baseCourts=settings?.courts||['Court N°1','Court N°2','Court Plastique'];
+  // Ajouter le court du match s'il n'est pas déjà dans la liste
+  const courts=match.court&&!baseCourts.includes(match.court)
+    ?[...baseCourts,match.court]
+    :baseCourts;
+  const [court,setCourt]=useState(match.court||courts[0]||'');
+
+  // Extrait le nom de famille complet (mots en MAJUSCULES) ex: "IBN MAJAH Mouataz" → "IBN MAJAH"
+  const lastName=n=>{
+    if(!n)return n;
+    const words=n.trim().split(' ');
+    const caps=words.filter(w=>w.length>1&&w===w.toUpperCase()&&!/\d/.test(w));
+    return caps.length>0?caps.join(' '):words[0];
+  };
+  const shortName=name=>{
+    if(!name)return name;
+    const parts=name.split(' / ');
+    if(parts.length>=2)return parts.map(p=>lastName(p.trim())).join(' / ');
+    return lastName(name);
+  };
+  const rankDisplay=r=>{
+    if(!r)return'';
+    const parts=r.split(' / ');
+    return parts.join(' / ');
+  };
+
   return(
     <div className="overlay" onClick={onClose}>
-      <div className="modal" style={{maxWidth:420}} onClick={e=>e.stopPropagation()}>
-        <h2 className="mb2">Qui sert en premier ?</h2>
-        <p style={{color:'var(--txt-m)',fontSize:14,marginBottom:20,fontFamily:'var(--fb)'}}>{match.player1} vs {match.player2}</p>
+      <div className="modal" style={{maxWidth:460}} onClick={e=>e.stopPropagation()}>
+        <h2 className="mb3">Démarrer le match</h2>
+        <p style={{color:'var(--txt-m)',fontSize:13,marginBottom:16,fontFamily:'var(--fb)',lineHeight:1.4}}>
+          {match.player1} <span style={{opacity:.4}}>vs</span> {match.player2}
+        </p>
+
+        {/* Court */}
+        <div className="mb4">
+          <label className="lbl">Court</label>
+          <div className="flex gap2" style={{flexWrap:'wrap'}}>
+            {courts.map(c=>(
+              <button key={c} onClick={()=>setCourt(c)}
+                className={`btn btn-sm ${court===c?'btn-p':''}`}>
+                {c}
+              </button>
+            ))}
+            <button className={`btn btn-sm ${!courts.includes(court)&&court?'btn-p':''}`}
+              onClick={()=>setCourt('')}
+              style={{opacity:.7}}>+ Autre</button>
+          </div>
+          {!courts.includes(court)&&(
+            <input className="inp mt2" value={court} onChange={e=>setCourt(e.target.value)}
+              placeholder="Nom du court…" autoFocus
+              style={{padding:'5px 10px',fontSize:13,marginTop:8}}/>
+          )}
+        </div>
+
+        {/* Serveur */}
+        <div className="lbl mb2">Qui sert en premier ?</div>
         <div className="flex gap3">
-          <button className="btn btn-p" style={{flex:1,justifyContent:'center',flexDirection:'column',padding:'16px',gap:4,fontSize:15}} onClick={()=>onStart(1)}>
-            🎾 {match.player1}<span style={{fontSize:12,fontWeight:400,opacity:.7}}>{match.p1Ranking}</span>
+          <button className="btn btn-p"
+            style={{flex:1,justifyContent:'center',flexDirection:'column',padding:'14px 10px',gap:5,textAlign:'center'}}
+            onClick={()=>onStart(1,court)}>
+            <span style={{fontSize:18}}>🎾</span>
+            <span style={{fontFamily:'var(--fd)',fontWeight:700,fontSize:14,lineHeight:1.3}}>{shortName(match.player1)}</span>
+            {match.p1Ranking&&<span style={{fontSize:11,fontWeight:400,opacity:.8}}>{rankDisplay(match.p1Ranking)}</span>}
           </button>
-          <button className="btn btn-g" style={{flex:1,justifyContent:'center',flexDirection:'column',padding:'16px',gap:4,fontSize:15}} onClick={()=>onStart(2)}>
-            🎾 {match.player2}<span style={{fontSize:12,fontWeight:400,opacity:.7}}>{match.p2Ranking}</span>
+          <button className="btn btn-g"
+            style={{flex:1,justifyContent:'center',flexDirection:'column',padding:'14px 10px',gap:5,textAlign:'center'}}
+            onClick={()=>onStart(2,court)}>
+            <span style={{fontSize:18}}>🎾</span>
+            <span style={{fontFamily:'var(--fd)',fontWeight:700,fontSize:14,lineHeight:1.3}}>{shortName(match.player2)}</span>
+            {match.p2Ranking&&<span style={{fontSize:11,fontWeight:400,opacity:.8}}>{rankDisplay(match.p2Ranking)}</span>}
           </button>
         </div>
+      </div>
+    </div>
+  );
+}
+
+// Calcule les stats de points (mode point par point)
+function computePointStats(match){
+  const log=match.pointLog||[];
+  if(!log.length)return null;
+  const mk=()=>({servePts:0,serveWon:0,returnPts:0,returnWon:0,
+    bpFaced:0,bpSaved:0,bpOpp:0,bpConv:0,
+    firstIn:0,firstWon:0,firstTotal:0,
+    secondIn:0,secondWon:0,secondTotal:0,
+    aces:0,dfs:0,winners:0,errors:0,totalPts:0,totalWon:0});
+  const s={p1:mk(),p2:mk()};
+  log.forEach(({server,winner,isBreakPt,isTB,serve,type})=>{
+    if(!server||!winner)return;
+    const srv=server===1?'p1':'p2';
+    const rcv=server===1?'p2':'p1';
+    const win=winner===1?'p1':'p2';
+    // Points totaux
+    s[srv].totalPts++; s[rcv].totalPts++;
+    if(win===srv)s[srv].totalWon++; else s[rcv].totalWon++;
+    // Service/retour
+    s[srv].servePts++;
+    s[rcv].returnPts++;
+    if(win===srv)s[srv].serveWon++; else s[rcv].returnWon++;
+    // Break points
+    if(isBreakPt){
+      s[srv].bpFaced++;s[rcv].bpOpp++;
+      if(win===rcv)s[rcv].bpConv++; else s[srv].bpSaved++;
+    }
+    // 1ère / 2ème balle
+    if(serve==='1'){
+      s[srv].firstTotal++;
+      if(type!=='df'){s[srv].firstIn++;if(win===srv)s[srv].firstWon++;}
+    } else if(serve==='2'){
+      s[srv].secondTotal++;
+      if(type!=='df'){s[srv].secondIn++;if(win===srv)s[srv].secondWon++;}
+    }
+    // Types de points
+    if(type==='ace')s[srv].aces++;
+    if(type==='df')s[srv].dfs++;
+    if(type==='win')s[win].winners++;
+    if(type==='fe')s[win==='p1'?'p2':'p1'].errors++;
+  });
+  return s;
+}
+function AbandonModal({match,onConfirm,onClose}){
+  const sn=n=>{const p=n.split(' / ');return p.length>=2?p.map(x=>x.trim().split(' ').slice(0,2).join(' ')).join(' / '):n.split(' ').slice(0,2).join(' ');};
+  return(
+    <div className="overlay" onClick={onClose}>
+      <div className="modal" style={{maxWidth:440}} onClick={e=>e.stopPropagation()}>
+        <h2 className="mb2">⚠️ Abandon</h2>
+        <p style={{fontSize:13,color:'var(--txt-m)',fontFamily:'var(--fb)',marginBottom:6}}>{match.player1} <span style={{opacity:.4}}>vs</span> {match.player2}</p>
+        <p style={{fontSize:13,color:'var(--txt-m)',fontFamily:'var(--fb)',marginBottom:20}}>Score actuel : <strong>{scoreText(match)}</strong></p>
+        <div className="lbl mb3">Qui abandonne ?</div>
+        <div className="flex gap3">
+          {[1,2].map(pi=>{
+            const name=pi===1?match.player1:match.player2,rank=pi===1?match.p1Ranking:match.p2Ranking,other=pi===1?match.player2:match.player1;
+            return(
+              <button key={pi} className="btn btn-r"
+                style={{flex:1,flexDirection:'column',padding:'16px 10px',gap:6,textAlign:'center'}}
+                onClick={()=>onConfirm(pi)}>
+                <span style={{fontSize:22}}>🚩</span>
+                <span style={{fontFamily:'var(--fd)',fontWeight:700,fontSize:14,lineHeight:1.3}}>{sn(name)}</span>
+                {rank&&<span style={{fontSize:11,fontWeight:400,opacity:.8}}>{rank}</span>}
+                <span style={{fontSize:11,opacity:.6,marginTop:2}}>→ {sn(other)} gagne</span>
+              </button>
+            );
+          })}
+        </div>
+        <div className="flex je mt3"><button className="btn" onClick={onClose}>Annuler</button></div>
       </div>
     </div>
   );
@@ -485,6 +921,7 @@ function ScoreCorrectionModal({match,settings,onSave,onClose}){
     </div>
   );
 }
+
 
 // ── PDFImportModal ───────────────────────────────────────────────
 function PDFImportModal({settings,onImport,onClose}){
@@ -542,7 +979,7 @@ function PDFImportModal({settings,onImport,onClose}){
           </div>
           <div className="flex je gap3" style={{marginTop:14}}>
             <button className="btn" onClick={()=>setStep('upload')}>← Retour</button>
-            <button className="btn btn-p" onClick={()=>{onImport(preview);onClose();}}>Importer {preview.length} match(s)</button>
+            <button className="btn btn-p" onClick={()=>{onImport(preview.map(m=>enrichMatch(m,settings?.players)));onClose();}}>Importer {preview.length} match(s)</button>
           </div>
         </>}
       </div>
@@ -551,17 +988,20 @@ function PDFImportModal({settings,onImport,onClose}){
 }
 
 // ── MatchRowItem ─────────────────────────────────────────────────
-function MatchRowItem({match,settings,onEdit,onDelete,onStatus,onStart,onCorrect}){
+function MatchRowItem({match,settings,onEdit,onDelete,onStatus,onStart,onCorrect,onWO,onPause,onResume,onAbandon}){
   const [now,setNow]=useState(Date.now());
-  useEffect(()=>{if(match.status!=='live')return;const t=setInterval(()=>setNow(Date.now()),30000);return()=>clearInterval(t);},[match.status]);
-  const dur=match.status==='live'&&match.startedAt?fmtDur(now-match.startedAt):match.status==='finished'&&match.startedAt&&match.endedAt?fmtDur(match.endedAt-match.startedAt):'';
+  const [showWO,setShowWO]=useState(false);
+  const isPaused=match.status==='paused';
+  useEffect(()=>{if(match.status!=='live'&&!isPaused)return;const t=setInterval(()=>setNow(Date.now()),30000);return()=>clearInterval(t);},[match.status]);
+  const dur=getMatchDur(match,now);
   const fmtL=settings?.formatLabels||DEFAULT_FORMAT_LABELS;
+  const borderC=match.status==='live'?'var(--red)':match.status==='finished'?'var(--green)':isPaused?'#b87000':'var(--bdr)';
   return(
-    <div className="mrow" style={{borderLeft:`3px solid ${match.status==='live'?'var(--red)':match.status==='finished'?'var(--green)':'var(--bdr)'}`}}>
+    <div className="mrow" style={{borderLeft:`3px solid ${borderC}`}}>
       <div className="mrow-head">
-        <span className={`badge ${match.status==='live'?'b-live':match.status==='finished'?'b-done':'b-pend'}`}>
+        <span className={`badge ${match.status==='live'?'b-live':match.status==='finished'?'b-done':isPaused?'b-info':'b-pend'}`}>
           {match.status==='live'&&<span className="dot"/>}
-          {match.status==='live'?'En direct':match.status==='finished'?'Terminé':'À venir'}
+          {match.status==='live'?'En direct':match.status==='finished'?(match.wo?'W.O.':match.abandonBy?'Abandon':'Terminé'):isPaused?'⏸ Pause':'À venir'}
         </span>
         {match.scheduledTime&&<span style={{fontSize:13,fontWeight:600,color:'var(--clay)',fontFamily:'var(--fd)'}}>{match.scheduledTime}</span>}
         {match.category&&<span style={{fontSize:12,color:'var(--txt-m)'}}>{match.category}</span>}
@@ -572,8 +1012,23 @@ function MatchRowItem({match,settings,onEdit,onDelete,onStatus,onStart,onCorrect
       </div>
       <div className="mrow-body"><ScoreDisplay match={match}/></div>
       <div className="mrow-foot">
+        {/* Pending : Démarrer + W.O. */}
         {match.status==='pending'&&<button className="btn btn-p btn-sm" onClick={onStart}>▶ Démarrer</button>}
-        {match.status==='live'&&<button className="btn btn-sm" style={{borderColor:'var(--red)',color:'var(--red)'}} onClick={()=>{if(confirm('Terminer ?'))onStatus('finished')}}>⏹ Terminer</button>}
+        {match.status==='pending'&&!showWO&&<button className="btn btn-sm" style={{borderColor:'#b87000',color:'#b87000'}} onClick={()=>setShowWO(true)}>W.O.</button>}
+        {match.status==='pending'&&showWO&&<>
+          <span style={{fontSize:12,color:'var(--txt-m)',alignSelf:'center'}}>W.O. — qui gagne ?</span>
+          <button className="btn btn-sm btn-g" onClick={()=>{onWO(match.id,1);setShowWO(false);}}>🏆 {match.player1.split(/[\s/]/)[0]}</button>
+          <button className="btn btn-sm btn-g" onClick={()=>{onWO(match.id,2);setShowWO(false);}}>🏆 {match.player2.split(/[\s/]/)[0]}</button>
+          <button className="btn btn-sm btn-ghost" onClick={()=>setShowWO(false)}>✕</button>
+        </>}
+        {/* Live : Pause + Abandon + Fin */}
+        {match.status==='live'&&<button className="btn btn-sm" style={{borderColor:'#b87000',color:'#b87000'}} onClick={()=>onPause(match.id)}>⏸ Pause</button>}
+        {match.status==='live'&&<button className="btn btn-sm" style={{borderColor:'var(--red)',color:'var(--red)'}} onClick={()=>onAbandon(match)}>⚠ Abandon</button>}
+        {match.status==='live'&&<button className="btn btn-sm" style={{borderColor:'var(--red)',color:'var(--red)'}} onClick={()=>{if(confirm('Terminer le match ?'))onStatus('finished')}}>⏹ Fin</button>}
+        {/* Pause : Reprendre + Fin */}
+        {isPaused&&<button className="btn btn-p btn-sm" onClick={()=>onResume(match.id)}>▶ Reprendre</button>}
+        {isPaused&&<button className="btn btn-sm" style={{borderColor:'var(--red)',color:'var(--red)'}} onClick={()=>{if(confirm('Terminer ?'))onStatus('finished')}}>⏹ Fin</button>}
+        {/* Terminé : Reprendre */}
         {match.status==='finished'&&<button className="btn btn-sm" onClick={()=>onStatus('live')}>↩ Reprendre</button>}
         <button className="btn btn-sm btn-ghost" onClick={onCorrect}>✏ Score</button>
         <button className="btn btn-sm btn-ghost" onClick={onEdit}>✏ Détails</button>
@@ -583,12 +1038,223 @@ function MatchRowItem({match,settings,onEdit,onDelete,onStatus,onStart,onCorrect
   );
 }
 
+// ── GSheetImportModal ─────────────────────────────────────────────
+function GSheetImportModal({settings,onImport,onClose}){
+  const [url,setUrl]=useState('');
+  const [loading,setLoading]=useState(false);
+  const [err,setErr]=useState('');
+  const [preview,setPreview]=useState(null);
+
+  // Extrait l'ID du sheet depuis différents formats d'URL Google Sheets
+  const extractSheetId=u=>{
+    const m=u.match(/\/spreadsheets\/d\/([a-zA-Z0-9_-]+)/);
+    return m?m[1]:null;
+  };
+
+  const extractGid=u=>{
+    const m=u.match(/[#&?]gid=(\d+)/);
+    return m?m[1]:'0';
+  };
+
+  const fetchSheet=async()=>{
+    setErr('');setLoading(true);setPreview(null);
+    try{
+      const id=extractSheetId(url);
+      if(!id)throw new Error('URL invalide. Copiez l\'URL complète depuis la barre d\'adresse Google Sheets.');
+      const gid=extractGid(url);
+      // Export CSV public (fonctionne si le sheet est publié ou partagé en lecture)
+      const csvUrl=`https://docs.google.com/spreadsheets/d/${id}/export?format=csv&gid=${gid}`;
+      const resp=await fetch(csvUrl);
+      if(!resp.ok)throw new Error(`Impossible de lire le fichier (${resp.status}). Vérifiez que le document est bien partagé en lecture publique.`);
+      const text=await resp.text();
+      if(!text.trim())throw new Error('Le document est vide.');
+      // Parse CSV
+      const rows=parseCSV(text);
+      if(rows.length<2)throw new Error('Pas assez de lignes dans le document.');
+      // Réutilise le même parseur que Excel
+      const matches=parseXLSRowsStatic(rows,todayStr(),settings);
+      if(matches.length===0)throw new Error('Aucun match détecté. Vérifiez le format de votre feuille.');
+      setPreview({rows,matches});
+    }catch(e){setErr(e.message);}
+    setLoading(false);
+  };
+
+  const parseCSV=text=>{
+    const lines=text.split(/\r?\n/);
+    return lines.map(line=>{
+      const cells=[];let cur='',inQ=false;
+      for(let i=0;i<line.length;i++){
+        const ch=line[i];
+        if(ch==='"'&&!inQ){inQ=true;}
+        else if(ch==='"'&&inQ&&line[i+1]==='"'){cur+='"';i++;}
+        else if(ch==='"'&&inQ){inQ=false;}
+        else if(ch===','&&!inQ){cells.push(cur);cur='';}
+        else cur+=ch;
+      }
+      cells.push(cur);
+      return cells.map(c=>c.trim());
+    }).filter(r=>r.some(c=>c));
+  };
+
+  const [editPreview,setEditPreview]=useState([]);
+  useEffect(()=>{if(preview)setEditPreview(preview.matches);},[preview]);
+  const upd=(i,k,v)=>setEditPreview(p=>p.map((m,j)=>j===i?{...m,[k]:v}:m));
+
+  const cats=settings?.categories||DEFAULT_CATS;
+  const fmtL=settings?.formatLabels||DEFAULT_FORMAT_LABELS;
+
+  return(
+    <div className="overlay" onClick={onClose}>
+      <div className="modal" style={{maxWidth:preview?980:520}} onClick={e=>e.stopPropagation()}>
+        <div className="flex ai jb mb4">
+          <h2>🔗 Import Google Sheets</h2>
+          <button className="btn btn-sm btn-ghost" onClick={onClose}>✕</button>
+        </div>
+
+        {!preview&&<>
+          <div className="info-box">
+            <strong>Comment préparer votre Google Sheet :</strong><br/>
+            1. Utilisez le même format que le modèle Excel (colonnes : Joueur1, Joueur2, ClubJ1, ClubJ2, Cl.J1, Cl.J2, Catégorie, Tour, Court, Format, Heure, Date)<br/>
+            <strong>OU</strong> le format FFT avec les colonnes J1/J2/J3/J4.<br/><br/>
+            2. Fichier → <strong>Partager → Tout le monde disposant du lien → Lecteur</strong><br/>
+            3. Copiez l'URL et collez-la ci-dessous.
+          </div>
+          {err&&<div className="err-box">{err}</div>}
+          <div className="mb3">
+            <label className="lbl">URL du Google Sheet</label>
+            <input className="inp" value={url} onChange={e=>setUrl(e.target.value)}
+              placeholder="https://docs.google.com/spreadsheets/d/..."
+              onKeyDown={e=>e.key==='Enter'&&url.trim()&&fetchSheet()}/>
+          </div>
+          <div className="flex je gap3">
+            <button className="btn" onClick={onClose}>Annuler</button>
+            <button className="btn btn-p" onClick={fetchSheet} disabled={!url.trim()||loading}>
+              {loading?'⏳ Chargement…':'📥 Charger les données'}
+            </button>
+          </div>
+        </>}
+
+        {preview&&<>
+          <div className="info-box">✅ {editPreview.length} match(s) détecté(s). Vérifiez avant d'importer.</div>
+          <div style={{overflowX:'auto',marginBottom:14}}>
+            <table style={{width:'100%',borderCollapse:'collapse',fontSize:13}}>
+              <thead><tr style={{background:'var(--sand-l)'}}>
+                {['Heure','Catégorie','Joueur 1','Club J1','Cl.J1','Joueur 2','Club J2','Cl.J2','Format','Date',''].map((h,i)=>(
+                  <th key={i} style={{padding:'5px 6px',textAlign:'left',fontWeight:600,fontSize:11,color:'var(--txt-m)',borderBottom:'1px solid var(--bdr)',whiteSpace:'nowrap'}}>{h}</th>
+                ))}
+              </tr></thead>
+              <tbody>
+                {editPreview.map((m,i)=>(
+                  <tr key={i} style={{borderBottom:'1px solid var(--bdr-l)'}}>
+                    <td><input className="inp" value={m.scheduledTime} onChange={e=>upd(i,'scheduledTime',e.target.value)} style={{width:64,padding:'3px 5px',fontSize:12}}/></td>
+                    <td><select className="inp" value={m.category} onChange={e=>upd(i,'category',e.target.value)} style={{padding:'3px 5px',fontSize:12,minWidth:100}}>{cats.map(c=><option key={c} value={c}>{c}</option>)}<option value={m.category}>{m.category}</option></select></td>
+                    <td><input className="inp" value={m.player1} onChange={e=>upd(i,'player1',e.target.value)} style={{width:110,padding:'3px 5px',fontSize:12}}/></td>
+                    <td><input className="inp" value={m.p1Club} onChange={e=>upd(i,'p1Club',e.target.value)} style={{width:90,padding:'3px 5px',fontSize:12}}/></td>
+                    <td><input className="inp" value={m.p1Ranking} onChange={e=>upd(i,'p1Ranking',e.target.value)} style={{width:46,padding:'3px 5px',fontSize:12}}/></td>
+                    <td><input className="inp" value={m.player2} onChange={e=>upd(i,'player2',e.target.value)} style={{width:110,padding:'3px 5px',fontSize:12}}/></td>
+                    <td><input className="inp" value={m.p2Club} onChange={e=>upd(i,'p2Club',e.target.value)} style={{width:90,padding:'3px 5px',fontSize:12}}/></td>
+                    <td><input className="inp" value={m.p2Ranking} onChange={e=>upd(i,'p2Ranking',e.target.value)} style={{width:46,padding:'3px 5px',fontSize:12}}/></td>
+                    <td><select className="inp" value={m.format} onChange={e=>upd(i,'format',e.target.value)} style={{padding:'3px 5px',fontSize:12,minWidth:70}}>{Object.entries(fmtL).map(([k,v])=><option key={k} value={k}>{v.slice(0,10)}</option>)}</select></td>
+                    <td><input className="inp" type="date" value={m.date} onChange={e=>upd(i,'date',e.target.value)} style={{width:115,padding:'3px 5px',fontSize:12}}/></td>
+                    <td><button className="btn btn-xs btn-ghost" style={{color:'var(--red)'}} onClick={()=>setEditPreview(p=>p.filter((_,j)=>j!==i))}>✕</button></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <div className="flex gap3 je">
+            <button className="btn" onClick={()=>setPreview(null)}>← Retour</button>
+            <button className="btn btn-p" onClick={()=>onImport(editPreview.map(m=>enrichMatch(m,settings?.players)))}>Importer {editPreview.length} match(s)</button>
+          </div>
+        </>}
+      </div>
+    </div>
+  );
+}
+
+// Parseur partagé (utilisé par XLS et GSheet)
+function parseXLSRowsStatic(rows, today, settings){
+  if(!rows.length)return[];
+  const header=(rows[0]||[]).map(c=>String(c||'').toLowerCase().trim());
+  const isFFT=header.some(h=>h.includes('epreuve')||h.includes('nom prénom j1')||h.includes('nom prenom j1'));
+  const parseDate=d=>{
+    if(!d&&d!==0)return '';
+    if(typeof d==='number'){
+      // Numéro de série Excel → date calendaire locale (évite décalage UTC)
+      const dt=new Date(Math.round((d-25569)*86400000));
+      return`${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')}`;
+    }
+    const s=String(d).trim();
+    if(!s)return '';
+    // JJ/MM/AAAA
+    const m1=s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+    if(m1)return`${m1[3]}-${m1[2].padStart(2,'0')}-${m1[1].padStart(2,'0')}`;
+    // JJ/MM (sans année → année en cours)
+    const m2=s.match(/^(\d{1,2})\/(\d{1,2})$/);
+    if(m2){const y=new Date().getFullYear();return`${y}-${m2[2].padStart(2,'0')}-${m2[1].padStart(2,'0')}`;}
+    // AAAA-MM-JJ (ISO)
+    if(/^\d{4}-\d{2}-\d{2}$/.test(s))return s;
+    return '';
+  };
+  const parseTime=t=>{
+    if(!t&&t!==0)return'';
+    if(typeof t==='number'){const tm=Math.round(t*1440);return`${String(Math.floor(tm/60)).padStart(2,'0')}:${String(tm%60).padStart(2,'0')}`;}
+    return String(t).trim();
+  };
+  const detectFmt=cat=>/doub|double|dm\b|dd\b|dx\b|mx\b/.test((cat||'').toLowerCase())?'doubles':'bo3';
+  const g=(r,i)=>(i!==undefined&&r[i]!==undefined&&r[i]!==null)?String(r[i]).trim():'';
+
+  if(isFFT){
+    const hdr=rows[0],idx={};
+    hdr.forEach((c,i)=>{const h=String(c||'').toLowerCase().trim();
+      if(h.includes('epreuve'))idx.cat=i;
+      else if(h.includes('découpage')||h.includes('decoupage'))idx.round=i;
+      else if(h==='tour')idx.tour=i;
+      else if(h==='date')idx.date=i;
+      else if(h==='heure')idx.time=i;
+      else if(h==='court')idx.court=i;
+      else if(h.includes('j1')&&(h.includes('nom')||h.includes('prénom')))idx.p1n=i;
+      else if(h==='clt j1')idx.p1r=i;
+      else if(h.includes('j2')&&(h.includes('nom')||h.includes('prénom')))idx.p2n=i;
+      else if(h==='clt j2')idx.p2r=i;
+      else if(h.includes('j3')&&(h.includes('nom')||h.includes('prénom')))idx.p3n=i;
+      else if(h==='clt j3')idx.p3r=i;
+      else if(h.includes('j4')&&(h.includes('nom')||h.includes('prénom')))idx.p4n=i;
+      else if(h==='clt j4')idx.p4r=i;
+    });
+    let lastDate='';
+    return rows.slice(1).filter(r=>r&&g(r,idx.p1n)).map(r=>{
+      const d=parseDate(r[idx.date]);
+      if(d)lastDate=d; // propagation : hérite la date de la ligne précédente si vide
+      const p1n=g(r,idx.p1n),p2n=g(r,idx.p2n),p3n=g(r,idx.p3n),p4n=g(r,idx.p4n);
+      const p1r=g(r,idx.p1r),p2r=g(r,idx.p2r),p3r=g(r,idx.p3r),p4r=g(r,idx.p4r);
+      const isDoubles=!!p2n;
+      const player1=isDoubles?`${p1n} / ${p2n}`.trim():p1n;
+      const player2=isDoubles?`${p3n}${p4n?' / '+p4n:''}`.trim():p3n;
+      const p1Ranking=isDoubles?`${p1r}${p2r?' / '+p2r:''}`.trim():p1r;
+      const p2Ranking=isDoubles?`${p3r}${p4r?' / '+p4r:''}`.trim():p3r;
+      const roundText=[g(r,idx.round),g(r,idx.tour)?`Tour ${g(r,idx.tour)}`:''].filter(Boolean).join(' – ');
+      return newMatch({player1,player2,p1Ranking,p2Ranking,p1Club:'',p2Club:'',category:g(r,idx.cat),round:roundText,court:g(r,idx.court),format:isDoubles?'doubles':detectFmt(g(r,idx.cat)),scheduledTime:parseTime(r[idx.time]),date:lastDate});
+    }).filter(m=>m.player1&&m.player2);
+  } else {
+    return rows.slice(1).filter(r=>r&&r[0]&&r[1]).map(r=>newMatch({
+      player1:g(r,0),player2:g(r,1),p1Club:g(r,2),p2Club:g(r,3),
+      p1Ranking:g(r,4),p2Ranking:g(r,5),category:g(r,6),round:g(r,7),
+      court:g(r,8),format:g(r,9)||'bo3',scheduledTime:g(r,10),
+      date:parseDate(r[11])||today,
+    }));
+  }
+}
+
 // ── MatchesTab ───────────────────────────────────────────────────
-function MatchesTab({matches,settings,onAdd,onEdit,onDelete,onSetStatus,onStartWithServer,onImport,onCorrect}){
+function MatchesTab({matches,settings,onAdd,onEdit,onDelete,onSetStatus,onStartWithServer,onImport,onCorrect,onWO,onPause,onResume}){
   const [showModal,setShowModal]=useState(false);
   const [editing,setEditing]=useState(null);
   const [correcting,setCorrecting]=useState(null);
   const [showPDF,setShowPDF]=useState(false);
+  const [showGSheet,setShowGSheet]=useState(false);
+  const [gSheetLoading,setGSheetLoading]=useState(false);
+  const [abandonTarget,setAbandonTarget]=useState(null);
   const [filter,setFilter]=useState('all');
   const xlsRef=useRef();
   const today=todayStr();
@@ -683,8 +1349,7 @@ function MatchesTab({matches,settings,onAdd,onEdit,onDelete,onSetStatus,onStartW
         const wb=XLSX.read(ev.target.result,{type:'binary',cellDates:false});
         const rows=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,raw:true});
         const imp=parseXLSRows(rows);
-        onImport(imp);
-        alert(`✅ ${imp.length} match(s) importé(s)`);
+        onImport(imp.map(m=>enrichMatch(m,settings?.players)));
       }catch(err){alert('Erreur : '+err.message);}
     };
     r.readAsBinaryString(file);e.target.value='';
@@ -699,6 +1364,32 @@ function MatchesTab({matches,settings,onAdd,onEdit,onDelete,onSetStatus,onStartW
           <button className="btn btn-sm" onClick={dlTpl}>⬇ Modèle Excel</button>
           <button className="btn btn-sm" onClick={()=>xlsRef.current?.click()}>⬆ Excel</button>
           <button className="btn btn-sm" onClick={()=>setShowPDF(true)}>📄 PDF</button>
+          <button className="btn btn-sm" onClick={()=>{
+            if(settings?.gsheetUrl){
+              // URL déjà configurée → import direct sans modal
+              setGSheetLoading(true);
+              (async()=>{
+                try{
+                  const id=settings.gsheetUrl.match(/\/spreadsheets\/d\/([a-zA-Z0-9_-]+)/)?.[1];
+                  const gid=settings.gsheetUrl.match(/[#&?]gid=(\d+)/)?.[1]||'0';
+                  if(!id)throw new Error('URL invalide dans les paramètres');
+                  const resp=await fetch(`https://docs.google.com/spreadsheets/d/${id}/export?format=csv&gid=${gid}`);
+                  if(!resp.ok)throw new Error(`Erreur ${resp.status} — vérifiez le partage du document`);
+                  const text=await resp.text();
+                  const rows=text.split(/\r?\n/).map(l=>{const cs=[],cur={v:'',q:false};for(const ch of l){if(ch==='"'&&!cur.q)cur.q=true;else if(ch==='"'&&cur.q)cur.q=false;else if(ch===','&&!cur.q){cs.push(cur.v.trim());cur.v='';}else cur.v+=ch;}cs.push(cur.v.trim());return cs;}).filter(r=>r.some(c=>c));
+                  const ms=parseXLSRowsStatic(rows,todayStr(),settings);
+                  if(!ms.length)throw new Error('Aucun match détecté');
+                  onImport(ms.map(m=>enrichMatch(m,settings?.players)));
+                  alert(`✅ ${ms.length} match(s) importés depuis Google Sheets`);
+                }catch(e){alert('❌ '+e.message);}
+                setGSheetLoading(false);
+              })();
+            } else {
+              setShowGSheet(true);
+            }
+          }}>
+            {gSheetLoading?'⏳…':'🔗 Google Sheets'}
+          </button>
           <button className="btn btn-p btn-sm" onClick={()=>{setEditing(null);setShowModal(true);}}>+ Nouveau</button>
         </div>
       </div>
@@ -714,53 +1405,336 @@ function MatchesTab({matches,settings,onAdd,onEdit,onDelete,onSetStatus,onStartW
             onDelete={()=>{if(confirm('Supprimer ?'))onDelete(m.id);}}
             onStatus={st=>onSetStatus(m.id,st)}
             onStart={()=>onStartWithServer(m)}
-            onCorrect={()=>setCorrecting(m)}/>)
+            onCorrect={()=>setCorrecting(m)}
+            onWO={onWO} onPause={onPause} onResume={onResume}
+            onAbandon={m=>setAbandonTarget(m)}/>)
       }
+      {abandonTarget&&<AbandonModal match={abandonTarget}
+        onConfirm={abandonBy=>{onSetStatus(abandonTarget.id,'finished',{abandonBy,winner:3-abandonBy});setAbandonTarget(null);}}
+        onClose={()=>setAbandonTarget(null)}/>}
       {showModal&&<MatchModal match={editing} settings={settings} onSave={fd=>{if(editing)onEdit(editing.id,fd);else onAdd(fd);setShowModal(false);setEditing(null);}} onClose={()=>{setShowModal(false);setEditing(null);}}/>}
       {correcting&&<ScoreCorrectionModal match={correcting} settings={settings} onSave={m=>{onCorrect(m);setCorrecting(null);}} onClose={()=>setCorrecting(null)}/>}
       {showPDF&&<PDFImportModal settings={settings} onImport={onImport} onClose={()=>setShowPDF(false)}/>}
+      {showGSheet&&<GSheetImportModal settings={settings} onImport={ms=>{onImport(ms);setShowGSheet(false);}} onClose={()=>setShowGSheet(false)}/>}
     </div>
   );
 }
 
-// ── ScorerTab ─────────────────────────────────────────────────────
-// Affiche TOUS les matchs en attente et en cours, triés par heure
-// Le marqueur peut démarrer un match directement depuis cet écran
-function ScorerTab({matches,settings,onAddGame,onUndo,onServer,onSetStatus,onStartWithServer}){
-  // Matchs actifs : en attente + en cours, triés (live d'abord, puis heure croissante)
-  const active=useMemo(()=>[...matches]
-    .filter(m=>m.status==='pending'||m.status==='live')
-    .sort((a,b)=>{
-      if(a.status==='live'&&b.status!=='live')return -1;
-      if(b.status==='live'&&a.status!=='live')return 1;
-      return timeToMin(a.scheduledTime)-timeToMin(b.scheduledTime);
-    })
-  ,[matches]);
+// ── ScorerTab — responsive tablette Android ──────────────────────
+function ScorerTab({matches,settings,onAddGame,onUndo,onServer,onSetStatus,onStartWithServer,onPause,onResume,onWO,onAddPoint,onUndoPoint,onToggleMode}){
+  const W=useWindowWidth();
+  const isWide=W>=900, isMid=W>=600;
+  const [sidebarOpen,setSidebarOpen]=useState(false);
+  const [abandonMatchId,setAbandonMatchId]=useState(null);
+  const [woMatchId,setWoMatchId]=useState(null);
+  const today=todayStr();
 
-  const [selId,setSelId]=useState(null);
+  const groups=useMemo(()=>{
+    // 1. Matchs du jour (en attente) + live/pause peu importe la date
+    const todayActive=[...matches].filter(m=>
+      (m.status==='live'||m.status==='paused') ||
+      (m.date&&m.date===today&&m.status==='pending')
+    ).sort((a,b)=>{
+      const r=s=>s==='live'||s==='paused'?0:1;
+      if(r(a.status)!==r(b.status))return r(a.status)-r(b.status);
+      return timeToMin(a.scheduledTime)-timeToMin(b.scheduledTime);
+    });
+    // Live/pause sans date (match commencé avant d'avoir la date)
+    const liveNoDate=[...matches].filter(m=>
+      !m.date&&(m.status==='live'||m.status==='paused')
+    );
+    // 2. Matchs terminés du jour (ou live terminés peu importe date)
+    const todayFinished=[...matches].filter(m=>
+      m.status==='finished'&&m.date===today
+    ).sort((a,b)=>timeToMin(a.scheduledTime)-timeToMin(b.scheduledTime));
+    // 3. Matchs des autres jours en attente (avec date)
+    const otherDays=[...matches].filter(m=>
+      m.date&&m.date!==today&&m.status==='pending'
+    ).sort((a,b)=>a.date!==b.date?a.date.localeCompare(b.date):timeToMin(a.scheduledTime)-timeToMin(b.scheduledTime));
+    return {today:[...todayActive,...liveNoDate], finished:todayFinished, other:otherDays};
+  },[matches,today]);
+
+  const all=useMemo(()=>[...groups.today,...groups.finished,...groups.other],[groups]);
+
+  const [scoringIds,setScoringIds]=useState([]);
   const [now,setNow]=useState(Date.now());
 
-  // Auto-sélection : priorité au match en cours, sinon le premier à venir
   useEffect(()=>{
-    const live=active.find(m=>m.status==='live');
-    const best=live||active[0];
-    if(best&&(!selId||!active.find(m=>m.id===selId)))setSelId(best.id);
-  },[active.map(m=>m.id+m.status).join()]);
+    setScoringIds(prev=>{
+      const valid=prev.filter(id=>all.find(m=>m.id===id));
+      const newLive=all.filter(m=>(m.status==='live'||m.status==='paused')&&!valid.includes(m.id)).map(m=>m.id);
+      return [...valid,...newLive].slice(0,3);
+    });
+  },[all.map(m=>m.id+m.status).join()]);
 
   useEffect(()=>{const t=setInterval(()=>setNow(Date.now()),1000);return()=>clearInterval(t);},[]);
 
-  const sel=active.find(m=>m.id===selId)||active[0];
-  const isLive=sel?.status==='live';
-  const isPending=sel?.status==='pending';
-  const fmt=sel?getFmt(sel,settings):null;
-  const sw=sel?countWonSets(sel):[0,0];
-  const si=sel?sel.sets.length-1:0;
-  const isSuperTBFinal=fmt&&fmt.finalSuper&&sel&&sel.sets.length===fmt.sets;
-  const isTBOnly=fmt?.tbOnly;
-  const isAtTB=sel&&!isSuperTBFinal&&!isTBOnly&&sel.sets[si]&&sel.sets[si][0]===6&&sel.sets[si][1]===6;
-  const dur=sel?.startedAt?fmtDur(now-sel.startedAt):'';
+  const scoring=scoringIds.map(id=>all.find(m=>m.id===id)).filter(Boolean);
 
-  if(active.length===0)return(
+  const handleSideClick=m=>{
+    // Pour tous les statuts : ajouter/retirer du panel de score
+    setScoringIds(prev=>{
+      if(prev.includes(m.id))return prev.filter(id=>id!==m.id);
+      if(prev.length>=3)return[...prev.slice(1),m.id];
+      return[...prev,m.id];
+    });
+    if(!isWide)setSidebarOpen(false);
+  };
+
+  // ── Composant item sidebar ───────────────────────────────────────
+  const SideItem=({m})=>{
+    const isScoring=scoringIds.includes(m.id);
+    const mSW=countWonSets(m);
+    const isML=m.status==='live',isPausedM=m.status==='paused',isDoneM=m.status==='finished';
+    const borderC=isML?'var(--red)':isPausedM?'#b87000':isDoneM?'var(--green)':'var(--bdr)';
+    return(
+      <div onClick={()=>handleSideClick(m)}
+        style={{padding:'10px 12px',borderRadius:'var(--r)',marginBottom:8,cursor:'pointer',
+          border:`2px solid ${isScoring?(isML||isPausedM?'var(--red)':'var(--clay)'):'var(--bdr-l)'}`,
+          background:isScoring?'var(--sand-l)':'var(--white)',transition:'all .15s',
+          borderLeft:`5px solid ${borderC}`,opacity:isDoneM?.85:1,WebkitTapHighlightColor:'transparent'}}>
+        <div style={{display:'flex',gap:6,marginBottom:4,alignItems:'center'}}>
+          {isML?<span className="badge b-live" style={{fontSize:10}}><span className="dot"/>Live</span>
+          :isPausedM?<span className="badge b-info" style={{fontSize:10}}>⏸ Pause</span>
+          :isDoneM?<span className="badge b-done" style={{fontSize:10}}>{m.wo?'W.O.':m.abandonBy?'Ab.':'✓'}</span>
+          :<span style={{fontSize:14,color:'var(--clay)',fontWeight:700}}>{m.scheduledTime||'—'}</span>}
+          <span style={{fontSize:12,color:'var(--txt-l)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',flex:1}}>{m.category}</span>
+          {isScoring&&<span style={{fontSize:10,background:'var(--clay)',color:'#fff',borderRadius:10,padding:'1px 6px'}}>●</span>}
+        </div>
+        <div style={{fontSize:15,fontFamily:'var(--fd)',fontWeight:700,lineHeight:1.4,display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+          <span style={{opacity:m.winner===2?.4:1,flex:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{splitDouble(m.player1,m.p1Ranking,'')[0]?.n||m.player1}</span>
+          {(isML||isPausedM||isDoneM)&&<span style={{color:'var(--clay)',fontWeight:800,marginLeft:6,fontSize:17}}>{mSW[0]}</span>}
+        </div>
+        <div style={{fontSize:15,fontFamily:'var(--fd)',fontWeight:700,lineHeight:1.4,display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+          <span style={{opacity:m.winner===1?.4:1,flex:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{splitDouble(m.player2,m.p2Ranking,'')[0]?.n||m.player2}</span>
+          {(isML||isPausedM||isDoneM)&&<span style={{color:'var(--clay)',fontWeight:800,marginLeft:6,fontSize:17}}>{mSW[1]}</span>}
+        </div>
+        {(isML||isPausedM||isDoneM)&&<div style={{fontSize:12,color:'var(--txt-l)',marginTop:3,fontFamily:'var(--fb)'}}>{scoreText(m)}</div>}
+        {m.status==='pending'&&<div style={{fontSize:12,color:'var(--clay)',marginTop:3,fontFamily:'var(--fb)',fontStyle:'italic'}}>Appuyer pour démarrer</div>}
+      </div>
+    );
+  };
+
+  // ── Composant panel de score ─────────────────────────────────────
+  const ScorePanel=({match})=>{
+    const fmt=getFmt(match,settings),sw=countWonSets(match);
+    const si=match.sets.length-1;
+    const isLive=match.status==='live',isFinished=match.status==='finished',isPaused=match.status==='paused',isPending=match.status==='pending';
+    const isSuperTBFinal=fmt.finalSuper&&match.sets.length===fmt.sets,isTBOnly=fmt.tbOnly;
+    const isAtTB=!isSuperTBFinal&&!isTBOnly&&match.sets[si]&&match.sets[si][0]===6&&match.sets[si][1]===6;
+    const canUndo=(match.history||[]).length>0;
+    const dur=getMatchDur(match,now);
+    const btnH=isWide?'70px':isMid?'64px':'56px';
+    const btnFont=isWide?14:13;
+    const isPointMode=match.scoringMode==='point';
+    const isTB=isSuperTBFinal||isTBOnly||isAtTB;
+    const gs=match.gameScore||[0,0];
+    const gsLabel=p=>isTB?String(p):POINT_LABELS[Math.min(p,4)]||'Ad';
+
+    return(
+      <div style={{border:'1px solid var(--bdr-l)',borderRadius:'var(--rl)',overflow:'hidden',background:'var(--white)',boxShadow:'var(--shd)'}}>
+        {/* Header avec toggle Jeu/Point */}
+        <div style={{padding:'8px 12px',background:'var(--sand-l)',borderBottom:'1px solid var(--bdr-l)',display:'flex',alignItems:'center',gap:8,flexWrap:'wrap'}}>
+          {isLive?<span className="badge b-live" style={{fontSize:10}}><span className="dot"/>Live</span>
+          :isPaused?<span className="badge b-info" style={{fontSize:10}}>⏸ Pause</span>
+          :isFinished?<span className="badge b-done" style={{fontSize:10}}>✓ Terminé</span>
+          :<span className="badge b-pend" style={{fontSize:10}}>⏳</span>}
+          {match.category&&<span style={{fontSize:12,color:'var(--txt-m)'}}>{match.category}</span>}
+          {match.court&&<span style={{fontSize:12,color:'var(--txt-l)'}}>• {match.court}</span>}
+          {dur&&<span style={{fontSize:12,color:'var(--txt-m)',fontWeight:600}}>⏱ {dur}</span>}
+          {(isLive||isPaused)&&<div style={{display:'flex',gap:0,border:'1px solid var(--bdr)',borderRadius:6,overflow:'hidden'}}>
+            <button onClick={()=>onToggleMode(match.id,'game')} style={{padding:'3px 10px',fontSize:11,fontFamily:'var(--fb)',fontWeight:600,cursor:'pointer',border:'none',background:!isPointMode?'var(--clay)':'transparent',color:!isPointMode?'#fff':'var(--txt-m)'}}>Jeu</button>
+            <button onClick={()=>onToggleMode(match.id,'point')} style={{padding:'3px 10px',fontSize:11,fontFamily:'var(--fb)',fontWeight:600,cursor:'pointer',border:'none',background:isPointMode?'var(--clay)':'transparent',color:isPointMode?'#fff':'var(--txt-m)'}}>Point</button>
+          </div>}
+          <button onClick={()=>setScoringIds(p=>p.filter(id=>id!==match.id))}
+            style={{marginLeft:'auto',background:'none',border:'none',color:'var(--txt-l)',cursor:'pointer',fontSize:18,lineHeight:1,padding:'4px 6px',minWidth:36,minHeight:36}}>✕</button>
+        </div>
+
+        {/* Joueurs + score */}
+        <div style={{padding:'8px 12px'}}>
+          {[0,1].map(pi=>{
+            const lead=sw[pi]>sw[1-pi],won=match.winner===pi+1;
+            const pn=pi===0?match.player1:match.player2;
+            const pr=pi===0?match.p1Ranking:match.p2Ranking;
+            const pclub=pi===0?match.p1Club:match.p2Club;
+            const parts=splitDouble(pn,pr,pclub);
+            return(
+              <div key={pi} className="srow">
+                <div className="sname" style={{color:won?'var(--green)':undefined,flex:1}}>
+                  {isLive&&match.server===pi+1&&<span style={{width:9,height:9,borderRadius:'50%',background:'var(--clay)',display:'inline-block',flexShrink:0,boxShadow:'0 0 6px var(--clay)'}}/>}
+                  <div style={{lineHeight:1.4}}>
+                    {parts.map((p,i)=>(
+                      <div key={i}>
+                        <span style={{fontFamily:'var(--fd)',fontSize:isWide?15:14,fontWeight:700}}>{p.n}</span>
+                        {p.r&&<span style={{fontSize:11,color:'var(--clay)',fontFamily:'var(--fb)',fontWeight:600,marginLeft:5}}>{p.r}</span>}
+                        {p.c&&<span style={{fontSize:11,color:'var(--txt-l)',fontFamily:'var(--fb)',fontWeight:400,marginLeft:4}}>{p.c}</span>}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <div className="ssets">
+                  {match.sets.map((s,i)=>{
+                    const w=(s[pi]>s[1-pi])&&(match.sets.length>i+1||isFinished);
+                    return<div key={i} className={`sset${w?' w':''}`} style={{fontSize:i===si?18:13}}>{s[pi]}</div>;
+                  })}
+                </div>
+                <div className="swon" style={{color:lead?'var(--dark)':'var(--txt-l)',fontSize:18}}>{sw[pi]}</div>
+              </div>
+            );
+          })}
+          {isAtTB&&<div style={{textAlign:'center',fontSize:12,color:'var(--clay)',fontWeight:700,fontFamily:'var(--fb)',padding:'4px 0'}}>⚡ TIE-BREAK</div>}
+          {(isSuperTBFinal||isTBOnly)&&<div style={{textAlign:'center',fontSize:12,color:'var(--clay)',fontWeight:700,fontFamily:'var(--fb)',padding:'4px 0'}}>⚡ SUPER TIE-BREAK</div>}
+        </div>
+
+        {/* Actions */}
+        <div style={{padding:'8px 12px',borderTop:'1px solid var(--bdr-l)'}}>
+
+          {/* Terminé → annuler */}
+          {isFinished&&(
+            <div>
+              <div style={{fontSize:12,color:'var(--red)',fontWeight:600,marginBottom:6}}>⚠️ Match clôturé — {scoreText(match)}</div>
+              {canUndo?<button className="btn btn-sm" style={{borderColor:'var(--red)',color:'var(--red)',fontWeight:600,minHeight:44}} onClick={()=>onUndo(match.id)}>↩ Annuler et reprendre</button>
+              :<span style={{fontSize:12,color:'var(--txt-l)'}}>Utilisez ✏ Score depuis l'onglet Matchs</span>}
+            </div>
+          )}
+
+          {/* Match en attente : Démarrer ou W.O. */}
+          {isPending&&(
+            <div>
+              <div style={{fontSize:13,color:'var(--txt-m)',fontFamily:'var(--fb)',marginBottom:12,lineHeight:1.4}}>
+                {match.scheduledTime&&<><strong>{match.scheduledTime}</strong> · </>}{match.category}
+                {match.court&&<> · {match.court}</>}
+              </div>
+              <div style={{display:'flex',gap:10}}>
+                <button className="btn btn-p"
+                  style={{flex:1,minHeight:btnH,flexDirection:'column',gap:6,fontSize:btnFont,WebkitTapHighlightColor:'transparent'}}
+                  onClick={()=>onStartWithServer(match)}>
+                  <span style={{fontSize:22}}>▶</span>
+                  <span>Démarrer</span>
+                </button>
+                <button className="btn"
+                  style={{flex:1,minHeight:btnH,flexDirection:'column',gap:6,fontSize:btnFont,borderColor:'#b87000',color:'#b87000',WebkitTapHighlightColor:'transparent'}}
+                  onClick={()=>setWoMatchId(match.id)}>
+                  <span style={{fontSize:22}}>🏳</span>
+                  <span>W.O.</span>
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* En pause */}
+          {isPaused&&(
+            <div style={{display:'flex',gap:8,alignItems:'center',flexWrap:'wrap',padding:'4px 0'}}>
+              <span style={{fontFamily:'var(--fd)',fontWeight:700,color:'#b87000',fontSize:14,flex:1}}>⏸ Match en pause</span>
+              <button className="btn btn-p btn-sm" style={{minHeight:44}} onClick={()=>onResume(match.id)}>▶ Reprendre</button>
+              <button className="btn btn-sm" style={{borderColor:'var(--red)',color:'var(--red)',minHeight:44}} onClick={()=>{if(confirm('Terminer ?'))onSetStatus(match.id,'finished')}}>⏹ Fin</button>
+            </div>
+          )}
+
+          {/* Live + vainqueur */}
+          {isLive&&match.winner&&(
+            <div style={{display:'flex',gap:8,alignItems:'center',flexWrap:'wrap'}}>
+              <span style={{fontFamily:'var(--fd)',fontWeight:700,color:'var(--green)',fontSize:15,flex:1}}>🏆 {match.winner===1?match.player1:match.player2}</span>
+              {canUndo&&<button className="btn btn-sm" style={{borderColor:'var(--red)',color:'var(--red)',minHeight:44,fontSize:13}} onClick={()=>onUndo(match.id)}>↩ Annuler</button>}
+              <button className="btn btn-sm btn-g" style={{minHeight:44,fontSize:13}} onClick={()=>onSetStatus(match.id,'finished')}>✓ Clore</button>
+            </div>
+          )}
+
+          {/* Live, pas de vainqueur → boutons score */}
+          {isLive&&!match.winner&&(
+            <div>
+              {/* Indicateur TB */}
+              {(isAtTB||isSuperTBFinal||isTBOnly)&&(
+                <div style={{textAlign:'center',fontSize:11,color:'var(--clay)',fontWeight:700,marginBottom:6,fontFamily:'var(--fb)'}}>
+                  ⚡ {isSuperTBFinal||isTBOnly?'SUPER TIE-BREAK':'TIE-BREAK'}
+                  {isPointMode&&<span style={{marginLeft:8,opacity:.7}}>{gs[0]} – {gs[1]}</span>}
+                </div>
+              )}
+              {/* Score dans le jeu (mode point) */}
+              {isPointMode&&!isTB&&(
+                <div style={{display:'flex',justifyContent:'center',alignItems:'center',gap:12,marginBottom:8,padding:'6px 12px',background:'var(--sand-l)',borderRadius:'var(--r)'}}>
+                  <span style={{fontFamily:'var(--fd)',fontWeight:900,fontSize:22,color:gs[0]>=3&&gs[0]>gs[1]?'var(--clay)':gs[0]>gs[1]?'var(--clay)':'var(--txt-m)',minWidth:36,textAlign:'right'}}>{gsLabel(gs[0])}</span>
+                  <span style={{fontFamily:'var(--fb)',fontSize:14,color:'var(--txt-l)',opacity:.5}}>–</span>
+                  <span style={{fontFamily:'var(--fd)',fontWeight:900,fontSize:22,color:gs[1]>=3&&gs[1]>gs[0]?'var(--green)':gs[1]>gs[0]?'var(--green)':'var(--txt-m)',minWidth:36,textAlign:'left'}}>{gsLabel(gs[1])}</span>
+                  {gs[0]===3&&gs[1]===3&&!fmt.noAd&&<span style={{fontFamily:'var(--fb)',fontSize:10,color:'var(--txt-l)',position:'absolute',marginTop:28}}>Déuce</span>}
+                </div>
+              )}
+              {/* Annotations optionnelles (mode point) */}
+              {isPointMode&&isLive&&!match.winner&&(
+                <div style={{display:'flex',gap:8,marginTop:6,marginBottom:2,flexWrap:'wrap'}}>
+                  <div style={{display:'flex',gap:3}}>
+                    <span style={{fontSize:10,color:'var(--txt-l)',fontFamily:'var(--fb)',alignSelf:'center',marginRight:2}}>Balle :</span>
+                    {[['1','1ère'],['2','2ème']].map(([v,lbl])=>(
+                      <button key={v} onClick={()=>{onToggleMode&&onToggleMode(match.id,'_serve_'+v);}}
+                        className="btn btn-sm"
+                        style={{fontSize:11,padding:'4px 8px',minHeight:32,
+                          background:match._pendingServe===v?'var(--clay)':'transparent',
+                          color:match._pendingServe===v?'#fff':'var(--txt-m)',
+                          borderColor:match._pendingServe===v?'var(--clay)':'var(--bdr)'}}>
+                        {lbl}
+                      </button>
+                    ))}
+                  </div>
+                  <div style={{display:'flex',gap:3}}>
+                    {[['ace','⚡ Ace'],['win','🎾 Pt gagnant'],['df','💥 DF'],['fe','❌ Faute']].map(([v,lbl])=>(
+                      <button key={v} onClick={()=>{onToggleMode&&onToggleMode(match.id,'_type_'+v);}}
+                        className="btn btn-sm"
+                        style={{fontSize:11,padding:'4px 8px',minHeight:32,
+                          background:match._pendingType===v?'var(--clay)':'transparent',
+                          color:match._pendingType===v?'#fff':'var(--txt-m)',
+                          borderColor:match._pendingType===v?'var(--clay)':'var(--bdr)'}}>
+                        {lbl}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {/* Gros boutons */}
+              <div style={{display:'flex',gap:8,marginBottom:10}}>
+                <button onClick={()=>isPointMode?onAddPoint(match.id,1):onAddGame(match.id,1)}
+                  style={{flex:1,height:btnH,borderRadius:'var(--rl)',border:'2px solid var(--clay)',background:'rgba(196,92,38,.07)',color:'var(--clay)',fontFamily:'var(--fd)',fontWeight:700,fontSize:btnFont,cursor:'pointer',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:3,WebkitTapHighlightColor:'transparent'}}>
+                  <span style={{fontSize:20}}>{isPointMode?'●':'🎾'}</span>
+                  <span style={{textAlign:'center',lineHeight:1.2,maxWidth:'90%',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
+                    {splitDouble(match.player1,'','').map(p=>{const w=p.n.trim().split(' ');const c=w.filter(x=>x.length>1&&x===x.toUpperCase()&&!/\d/.test(x));return c.length>0?c.join(' '):w[0];}).join(' / ')}
+                  </span>
+                  {match.p1Ranking&&<span style={{fontSize:10,opacity:.7,fontWeight:400}}>{match.p1Ranking}</span>}
+                </button>
+                <button onClick={()=>isPointMode?onAddPoint(match.id,2):onAddGame(match.id,2)}
+                  style={{flex:1,height:btnH,borderRadius:'var(--rl)',border:'2px solid var(--green)',background:'rgba(45,122,79,.07)',color:'var(--green)',fontFamily:'var(--fd)',fontWeight:700,fontSize:btnFont,cursor:'pointer',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:3,WebkitTapHighlightColor:'transparent'}}>
+                  <span style={{fontSize:20}}>{isPointMode?'●':'🎾'}</span>
+                  <span style={{textAlign:'center',lineHeight:1.2,maxWidth:'90%',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
+                    {splitDouble(match.player2,'','').map(p=>{const w=p.n.trim().split(' ');const c=w.filter(x=>x.length>1&&x===x.toUpperCase()&&!/\d/.test(x));return c.length>0?c.join(' '):w[0];}).join(' / ')}
+                  </span>
+                  {match.p2Ranking&&<span style={{fontSize:10,opacity:.7,fontWeight:400}}>{match.p2Ranking}</span>}
+                </button>
+              </div>
+              {/* Service + actions */}
+              <div style={{display:'flex',gap:8}}>
+                <div style={{flex:1}}>
+                  <div style={{fontSize:10,color:'var(--txt-m)',marginBottom:4,letterSpacing:.5,textTransform:'uppercase',fontWeight:600}}>Service</div>
+                  <div style={{display:'flex',gap:4}}>
+                    <button className={`btn btn-sm ${match.server===1?'btn-p':''}`} style={{flex:1,fontSize:12,padding:'8px 4px',minHeight:40}} onClick={()=>onServer(match.id,1)}>{splitDouble(match.player1,'','').map(p=>{const w=p.n.trim().split(' ');const c=w.filter(x=>x.length>1&&x===x.toUpperCase()&&!/\d/.test(x));return c.length>0?c.join(' '):w[0];}).join('/')}</button>
+                    <button className={`btn btn-sm ${match.server===2?'btn-p':''}`} style={{flex:1,fontSize:12,padding:'8px 4px',minHeight:40}} onClick={()=>onServer(match.id,2)}>{splitDouble(match.player2,'','').map(p=>{const w=p.n.trim().split(' ');const c=w.filter(x=>x.length>1&&x===x.toUpperCase()&&!/\d/.test(x));return c.length>0?c.join(' '):w[0];}).join('/')}</button>
+                  </div>
+                </div>
+                <div>
+                  <div style={{fontSize:10,color:'var(--txt-m)',marginBottom:4,letterSpacing:.5,textTransform:'uppercase',fontWeight:600}}>Actions</div>
+                  <div style={{display:'flex',gap:4}}>
+                    {canUndo&&<button className="btn btn-sm" style={{fontSize:12,padding:'8px 10px',minHeight:40,minWidth:44}} onClick={()=>isPointMode?onUndoPoint(match.id):onUndo(match.id)}>↩</button>}
+                    <button className="btn btn-sm" style={{fontSize:12,padding:'8px',minHeight:40,minWidth:44,borderColor:'#b87000',color:'#b87000'}} onClick={()=>onPause(match.id)}>⏸</button>
+                    <button className="btn btn-sm" style={{fontSize:12,padding:'8px',minHeight:40,borderColor:'var(--red)',color:'var(--red)'}} onClick={()=>setAbandonMatchId(match.id)}>⚠</button>
+                    <button className="btn btn-sm" style={{fontSize:12,padding:'8px 10px',minHeight:40,minWidth:44,borderColor:'var(--red)',color:'var(--red)'}} onClick={()=>{if(confirm('Terminer ?'))onSetStatus(match.id,'finished')}}>⏹</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
+
+  if(all.length===0)return(
     <div style={{padding:24}}>
       <div className="card" style={{textAlign:'center',padding:48,color:'var(--txt-m)'}}>
         <div style={{fontSize:40,marginBottom:12}}>🎾</div>
@@ -770,142 +1744,145 @@ function ScorerTab({matches,settings,onAddGame,onUndo,onServer,onSetStatus,onSta
     </div>
   );
 
-  return(
-    <div style={{padding:16,maxWidth:540,margin:'0 auto'}}>
-
-      {/* Liste de sélection si plusieurs matchs */}
-      {active.length>1&&(
-        <div className="mb3">
-          <label className="lbl">Choisir un match</label>
-          <div style={{display:'flex',flexDirection:'column',gap:6}}>
-            {active.map(m=>{
-              const isSel=m.id===selId;
-              const isML=m.status==='live';
-              return(
-                <button key={m.id} onClick={()=>setSelId(m.id)}
-                  style={{padding:'10px 14px',borderRadius:'var(--r)',border:`2px solid ${isSel?(isML?'var(--red)':'var(--clay)'):'var(--bdr-l)'}`,background:isSel?'var(--sand-l)':'var(--white)',cursor:'pointer',textAlign:'left',transition:'all .15s',width:'100%',fontFamily:'var(--fb)'}}>
-                  <div style={{display:'flex',alignItems:'center',gap:8}}>
-                    {isML
-                      ?<span className="badge b-live" style={{fontSize:10}}><span className="dot"/>Live</span>
-                      :<span className="badge b-pend" style={{fontSize:10}}>⏳ {m.scheduledTime||'À venir'}</span>
-                    }
-                    <span style={{fontFamily:'var(--fd)',fontWeight:600,fontSize:14,flex:1}}>{m.player1} <span style={{opacity:.4,fontWeight:400}}>vs</span> {m.player2}</span>
-                    {m.category&&<span style={{fontSize:11,color:'var(--txt-l)'}}>{m.category}</span>}
-                  </div>
-                  {isML&&<div style={{fontSize:12,color:'var(--txt-m)',marginTop:4,fontFamily:'var(--fb)'}}>{scoreText(m)}</div>}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      {sel&&<>
-        {/* Carte info match */}
-        <div className="card mb3">
-          <div className="flex ai gap2 mb3" style={{flexWrap:'wrap'}}>
-            {isLive
-              ?<span className="badge b-live"><span className="dot"/>En direct</span>
-              :<span className="badge b-pend">⏳ {sel.scheduledTime||'À venir'}</span>
-            }
-            {sel.court&&<span style={{fontSize:13,color:'var(--txt-m)'}}>{sel.court}</span>}
-            {isLive&&dur&&<span style={{fontSize:13,color:'var(--txt-m)',marginLeft:'auto'}}>⏱ {dur}</span>}
-            <span style={{fontSize:12,color:'var(--txt-l)',marginLeft:(!isLive||!dur)?'auto':0}}>{fmt?.label}</span>
-          </div>
-
-          {/* Joueurs */}
-          {[0,1].map(pi=>{
-            const lead=sw[pi]>sw[1-pi];
+  const abandonMatch=all.find(m=>m.id===abandonMatchId);
+  const woMatch=all.find(m=>m.id===woMatchId);
+  // Modal WO réutilise AbandonModal avec libellé adapté via un wrapper
+  const WOModal=({match})=>(
+    <div className="overlay" onClick={()=>setWoMatchId(null)}>
+      <div className="modal" style={{maxWidth:440}} onClick={e=>e.stopPropagation()}>
+        <h2 className="mb2">🏳 Walkover (W.O.)</h2>
+        <p style={{fontSize:13,color:'var(--txt-m)',fontFamily:'var(--fb)',marginBottom:20,lineHeight:1.4}}>
+          {match.player1} <span style={{opacity:.4}}>vs</span> {match.player2}<br/>
+          <span style={{fontSize:12,opacity:.6}}>Le match n'a pas démarré — qui déclare forfait ?</span>
+        </p>
+        <div className="lbl mb3">Qui est absent / forfait ?</div>
+        <div className="flex gap3">
+          {[1,2].map(pi=>{
+            const name=pi===1?match.player1:match.player2;
+            const other=pi===1?match.player2:match.player1;
+            const sn=n=>n.split(' / ').map(x=>x.trim().split(' ').slice(0,2).join(' ')).join(' / ');
             return(
-              <div key={pi} className="srow">
-                <div className="sname">
-                  {isLive&&sel.server===pi+1&&<span style={{width:8,height:8,borderRadius:'50%',background:'var(--clay)',display:'inline-block',flexShrink:0}}/>}
-                  <div>
-                    <div style={{fontFamily:'var(--fd)',fontSize:15,fontWeight:700}}>{pi===0?sel.player1:sel.player2}</div>
-                    <div style={{fontSize:11,color:'var(--txt-l)',fontFamily:'var(--fb)'}}>{pi===0?sel.p1Club:sel.p2Club} {pi===0?sel.p1Ranking:sel.p2Ranking}</div>
-                  </div>
-                </div>
-                {isLive&&<>
-                  <div className="ssets">{sel.sets.map((s,i)=>{const w=(s[pi]>s[1-pi])&&(sel.sets.length>i+1||sel.status==='finished');return<div key={i} className={`sset${w?' w':''}`} style={{fontSize:i===si?18:13}}>{s[pi]}</div>;})}</div>
-                  <div className="swon" style={{color:lead?'var(--dark)':'var(--txt-l)'}}>{sw[pi]}</div>
-                </>}
-              </div>
+              <button key={pi} className="btn" style={{flex:1,flexDirection:'column',padding:'16px 10px',gap:6,textAlign:'center',borderColor:'#b87000',color:'#b87000'}}
+                onClick={()=>{onWO(match.id,3-pi);setWoMatchId(null);}}>
+                <span style={{fontSize:22}}>🏳</span>
+                <span style={{fontFamily:'var(--fd)',fontWeight:700,fontSize:13,lineHeight:1.3}}>{sn(name)} forfait</span>
+                <span style={{fontSize:11,opacity:.6,marginTop:2}}>→ {sn(other)} gagne</span>
+              </button>
             );
           })}
-          {isAtTB&&<div style={{textAlign:'center',padding:'5px',fontSize:12,color:'var(--clay)',fontWeight:600,fontFamily:'var(--fb)'}}>⚡ TIE-BREAK</div>}
-          {(isSuperTBFinal||isTBOnly)&&<div style={{textAlign:'center',padding:'5px',fontSize:12,color:'var(--clay)',fontWeight:600,fontFamily:'var(--fb)'}}>⚡ SUPER TIE-BREAK</div>}
         </div>
+        <div className="flex je mt3"><button className="btn" onClick={()=>setWoMatchId(null)}>Annuler</button></div>
+      </div>
+    </div>
+  );
 
-        {/* Démarrer le match (si en attente) */}
-        {isPending&&(
-          <div className="card mb3" style={{textAlign:'center',padding:24,borderStyle:'dashed',borderColor:'var(--clay)',background:'var(--clay-pale)'}}>
-            <div style={{fontSize:13,color:'var(--clay-h)',marginBottom:14,fontFamily:'var(--fb)'}}>Ce match n'a pas encore démarré</div>
-            <button className="btn btn-p" style={{fontSize:16,padding:'12px 32px'}} onClick={()=>onStartWithServer(sel)}>
-              ▶ Démarrer ce match
+  // ── Layout paysage (≥900px) : sidebar fixe + grille ──────────────
+  if(isWide)return(
+    <div style={{display:'flex',height:'calc(100vh - 108px)',overflow:'hidden'}}>
+      {abandonMatch&&<AbandonModal match={abandonMatch} onConfirm={abandonBy=>{onSetStatus(abandonMatch.id,'finished',{abandonBy,winner:3-abandonBy});setAbandonMatchId(null);}} onClose={()=>setAbandonMatchId(null)}/>}
+      {woMatch&&<WOModal match={woMatch}/>}
+      <div style={{width:'30%',minWidth:180,maxWidth:280,borderRight:'1px solid var(--bdr-l)',overflowY:'auto',background:'var(--cream)',padding:'10px 8px'}}>
+        {/* Section 1 : matchs du jour */}
+        <div className="lbl" style={{marginBottom:6,paddingLeft:4}}>Matchs du jour</div>
+        {groups.today.length===0
+          ?<div style={{fontSize:12,color:'var(--txt-l)',fontFamily:'var(--fb)',padding:'4px 4px 8px',fontStyle:'italic'}}>Aucun match aujourd'hui</div>
+          :groups.today.map(m=><SideItem key={m.id} m={m}/>)
+        }
+        {/* Section 2 : terminés */}
+        {groups.finished.length>0&&<>
+          <div className="lbl" style={{marginTop:8,marginBottom:6,paddingLeft:4,paddingTop:8,borderTop:'1px solid var(--bdr-l)'}}>Terminés</div>
+          {groups.finished.map(m=><SideItem key={m.id} m={m}/>)}
+        </>}
+        {/* Section 3 : autres jours */}
+        {groups.other.length>0&&<>
+          <div className="lbl" style={{marginTop:8,marginBottom:6,paddingLeft:4,paddingTop:8,borderTop:'1px solid var(--bdr-l)'}}>Autres jours</div>
+          {groups.other.map(m=><SideItem key={m.id} m={m}/>)}
+        </>}
+      </div>
+      <div style={{flex:1,overflowY:'auto',padding:'10px 12px'}}>
+        {scoring.length===0?(
+          <div style={{display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',height:'100%',gap:10,color:'var(--txt-l)',textAlign:'center',padding:24}}>
+            <div style={{fontSize:44}}>🎾</div>
+            <div style={{fontFamily:'var(--fd)',fontSize:16,color:'var(--txt-m)'}}>Sélectionnez un match à gauche</div>
+            <div style={{fontSize:13}}>Jusqu'à 3 matchs simultanément</div>
+          </div>
+        ):(
+          <div style={{display:'grid',gridTemplateColumns:scoring.length===1?'1fr':'1fr 1fr',gap:12,alignItems:'start'}}>
+            {scoring.map((m,i)=>(
+              <div key={m.id} style={scoring.length===3&&i===2?{gridColumn:'1 / -1',maxWidth:'50%'}:{}}>
+                <ScorePanel match={m}/>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+
+  return(
+    <div style={{display:'flex',flexDirection:'column',height:'calc(100vh - 108px)',overflow:'hidden',position:'relative'}}>
+      {abandonMatch&&<AbandonModal match={abandonMatch} onConfirm={abandonBy=>{onSetStatus(abandonMatch.id,'finished',{abandonBy,winner:3-abandonBy});setAbandonMatchId(null);}} onClose={()=>setAbandonMatchId(null)}/>}
+      {woMatch&&<WOModal match={woMatch}/>}
+      {/* Barre du haut */}
+      <div style={{padding:'8px 12px',background:'var(--sand-l)',borderBottom:'1px solid var(--bdr-l)',display:'flex',gap:8,alignItems:'center',flexWrap:'wrap',flexShrink:0}}>
+        <button onClick={()=>setSidebarOpen(o=>!o)}
+          style={{padding:'8px 14px',borderRadius:'var(--r)',border:'1px solid var(--bdr)',background:'var(--white)',cursor:'pointer',fontFamily:'var(--fb)',fontSize:14,display:'flex',alignItems:'center',gap:6,minHeight:44}}>
+          ☰ Matchs <span style={{background:'var(--clay)',color:'#fff',borderRadius:10,padding:'1px 7px',fontSize:12,fontWeight:700}}>{all.length}</span>
+        </button>
+        {all.filter(m=>m.status==='live'||m.status==='paused').map(m=>{
+          const sel=scoringIds.includes(m.id);
+          const isPausedM=m.status==='paused';
+          return(
+            <button key={m.id} onClick={()=>handleSideClick(m)}
+              style={{padding:'6px 12px',borderRadius:20,border:`2px solid ${sel?(isPausedM?'#b87000':'var(--red)'):'var(--bdr)'}`,background:sel?'rgba(180,40,40,.08)':'var(--white)',cursor:'pointer',fontSize:13,fontFamily:'var(--fd)',fontWeight:600,color:sel?(isPausedM?'#b87000':'var(--red)'):'var(--txt)',minHeight:44,display:'flex',alignItems:'center',gap:5}}>
+              {isPausedM?'⏸':'●'} {splitDouble(m.player1,'','')[0]?.n.split(' ')[0]} / {splitDouble(m.player2,'','')[0]?.n.split(' ')[0]}
             </button>
+          );
+        })}
+        {all.filter(m=>m.status==='pending').length>0&&(
+          <span style={{fontSize:12,color:'var(--txt-l)',fontFamily:'var(--fb)'}}>
+            {all.filter(m=>m.status==='pending').length} à venir
+          </span>
+        )}
+      </div>
+      {/* Zone score */}
+      <div style={{flex:1,overflowY:'auto',padding:'10px 12px'}}>
+        {scoring.length===0?(
+          <div style={{display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',height:'100%',gap:10,color:'var(--txt-l)',textAlign:'center',padding:24}}>
+            <div style={{fontSize:44}}>🎾</div>
+            <div style={{fontFamily:'var(--fd)',fontSize:16,color:'var(--txt-m)'}}>Appuyez sur ☰ Matchs pour démarrer</div>
+          </div>
+        ):(
+          <div style={{display:'flex',flexDirection:'column',gap:12}}>
+            {scoring.map(m=><ScorePanel key={m.id} match={m}/>)}
           </div>
         )}
-
-        {/* Boutons de score (match en cours) */}
-        {isLive&&!sel.winner&&(
-          <div className="card mb3">
-            <div style={{fontFamily:'var(--fd)',fontWeight:600,marginBottom:12,fontSize:14}}>
-              {isSuperTBFinal||isTBOnly?'Qui gagne le Super Tie-Break ?':isAtTB?'Qui gagne le Tie-Break ?':'Qui gagne ce jeu ?'}
+      </div>
+      {/* Drawer */}
+      {sidebarOpen&&(
+        <>
+          <div onClick={()=>setSidebarOpen(false)} style={{position:'absolute',inset:0,background:'rgba(0,0,0,.4)',zIndex:10}}/>
+          <div style={{position:'absolute',top:0,left:0,bottom:0,width:Math.min(W*0.8,340),background:'var(--cream)',zIndex:11,overflowY:'auto',padding:'12px 10px',boxShadow:'4px 0 20px rgba(0,0,0,.2)'}}>
+            <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:10}}>
+              <div className="lbl" style={{margin:0}}>Programme</div>
+              <button onClick={()=>setSidebarOpen(false)} style={{background:'none',border:'none',fontSize:22,cursor:'pointer',color:'var(--txt-m)',padding:'4px 8px',minHeight:44,minWidth:44}}>✕</button>
             </div>
-            <div className="flex gap3">
-              <button
-                style={{padding:'20px 10px',borderRadius:'var(--rl)',font:'700 15px var(--fd)',flex:1,cursor:'pointer',border:'2px solid var(--clay)',background:'rgba(196,92,38,.07)',color:'var(--clay)',display:'flex',flexDirection:'column',alignItems:'center',gap:6,minHeight:82,transition:'transform .1s'}}
-                onMouseDown={e=>e.currentTarget.style.transform='scale(.97)'}
-                onMouseUp={e=>e.currentTarget.style.transform=''}
-                onClick={()=>onAddGame(sel.id,1)}>
-                <span style={{fontSize:22}}>🎾</span>
-                <span style={{textAlign:'center',lineHeight:1.2}}>{sel.player1}</span>
-                <span style={{fontSize:11,opacity:.7,fontWeight:400}}>{sel.p1Ranking}</span>
-              </button>
-              <button
-                style={{padding:'20px 10px',borderRadius:'var(--rl)',font:'700 15px var(--fd)',flex:1,cursor:'pointer',border:'2px solid var(--green)',background:'rgba(45,122,79,.07)',color:'var(--green)',display:'flex',flexDirection:'column',alignItems:'center',gap:6,minHeight:82,transition:'transform .1s'}}
-                onMouseDown={e=>e.currentTarget.style.transform='scale(.97)'}
-                onMouseUp={e=>e.currentTarget.style.transform=''}
-                onClick={()=>onAddGame(sel.id,2)}>
-                <span style={{fontSize:22}}>🎾</span>
-                <span style={{textAlign:'center',lineHeight:1.2}}>{sel.player2}</span>
-                <span style={{fontSize:11,opacity:.7,fontWeight:400}}>{sel.p2Ranking}</span>
-              </button>
-            </div>
+            <div className="lbl" style={{marginBottom:6,fontSize:10}}>Matchs du jour</div>
+            {groups.today.length===0
+              ?<div style={{fontSize:12,color:'var(--txt-l)',fontFamily:'var(--fb)',padding:'4px 4px 8px',fontStyle:'italic'}}>Aucun match aujourd'hui</div>
+              :groups.today.map(m=><SideItem key={m.id} m={m}/>)
+            }
+            {groups.finished.length>0&&<>
+              <div className="lbl" style={{marginTop:8,marginBottom:6,paddingTop:8,borderTop:'1px solid var(--bdr-l)',fontSize:10}}>Terminés</div>
+              {groups.finished.map(m=><SideItem key={m.id} m={m}/>)}
+            </>}
+            {groups.other.length>0&&<>
+              <div className="lbl" style={{marginTop:8,marginBottom:6,paddingTop:8,borderTop:'1px solid var(--bdr-l)',fontSize:10}}>Autres jours</div>
+              {groups.other.map(m=><SideItem key={m.id} m={m}/>)}
+            </>}
           </div>
-        )}
-
-        {/* Vainqueur */}
-        {sel.winner&&(
-          <div className="card mb3" style={{borderLeft:'3px solid var(--green)',background:'var(--green-l)'}}>
-            <div style={{fontFamily:'var(--fd)',color:'var(--green)',fontWeight:700,fontSize:16}}>
-              🏆 Vainqueur : {sel.winner===1?sel.player1:sel.player2}
-              {dur&&<span style={{fontSize:13,fontWeight:400,opacity:.7,marginLeft:10}}>{dur}</span>}
-            </div>
-            <div style={{marginTop:8}}><button className="btn btn-sm" onClick={()=>onSetStatus(sel.id,'finished')}>Clore le match</button></div>
-          </div>
-        )}
-
-        {/* Contrôles service + annulation (match en cours) */}
-        {isLive&&(
-          <div className="g2">
-            <div className="card" style={{padding:12}}>
-              <div className="lbl mb2">Service actuel</div>
-              <div className="flex gap2">
-                <button className={`btn btn-sm ${sel.server===1?'btn-p':''}`} style={{flex:1}} onClick={()=>onServer(sel.id,1)}>{sel.player1.split(/[\s/]/)[0]}</button>
-                <button className={`btn btn-sm ${sel.server===2?'btn-p':''}`} style={{flex:1}} onClick={()=>onServer(sel.id,2)}>{sel.player2.split(/[\s/]/)[0]}</button>
-              </div>
-            </div>
-            <div className="card" style={{padding:12}}>
-              <div className="lbl mb2">Actions</div>
-              <div className="flex gap2">
-                <button className="btn btn-sm" style={{flex:1}} onClick={()=>onUndo(sel.id)}>↩ Annuler</button>
-                <button className="btn btn-sm" style={{flex:1,borderColor:'var(--red)',color:'var(--red)'}} onClick={()=>{if(confirm('Terminer ce match ?'))onSetStatus(sel.id,'finished')}}>⏹ Fin</button>
-              </div>
-            </div>
-          </div>
-        )}
-      </>}
+        </>
+      )}
     </div>
   );
 }
@@ -916,6 +1893,8 @@ function SettingsTab({settings,onSave,fbConfig,onFBSave,fbStatus}){
   const [showFB,setShowFB]=useState(false);
   const [spIn,setSpIn]=useState('');
   const [catIn,setCatIn]=useState('');
+  const [playerIn,setPlayerIn]=useState({name:'',club:'',ranking:''});
+  const [courtIn,setCourtIn]=useState('');
   const s=(k,v)=>setForm(f=>({...f,[k]:v}));
   const upImg=(e,key)=>{const file=e.target.files[0];if(!file)return;const r=new FileReader();r.onload=ev=>s(key,ev.target.result);r.readAsDataURL(file);};
   const upSpLogo=(e,i)=>{const file=e.target.files[0];if(!file)return;const r=new FileReader();r.onload=ev=>s('sponsors',form.sponsors.map((sp,j)=>j===i?{...sp,logo:ev.target.result}:sp));r.readAsDataURL(file);};
@@ -961,9 +1940,87 @@ function SettingsTab({settings,onSave,fbConfig,onFBSave,fbStatus}){
             </div>
           </div>
           <div className="card mb4">
+            <h3 className="mb3">🎨 Thème</h3>
+            <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:10}}>
+              {Object.entries(THEMES).map(([key,th])=>{
+                const sel=(form.theme||'terre_battue')===key;
+                return(
+                  <div key={key} onClick={()=>{
+                    s('theme',key);s('bgColor',th.tv.bgColor);
+                    s('primaryColor',th.tv.primaryColor);s('textColor',th.tv.textColor);s('accentColor',th.tv.accentColor);
+                  }}
+                  style={{cursor:'pointer',borderRadius:'var(--rl)',overflow:'hidden',border:`2px solid ${sel?th.admin.clay:'var(--bdr-l)'}`,boxShadow:sel?`0 0 0 3px ${th.admin.clay}33`:'none',transition:'all .2s'}}>
+                    <div style={{background:th.tv.bgColor,padding:'10px 12px',minHeight:72,position:'relative'}}>
+                      <div style={{fontFamily:'var(--fd)',fontWeight:700,fontSize:11,color:th.tv.textColor,marginBottom:3}}>DUPONT</div>
+                      <div style={{fontFamily:'var(--fd)',fontWeight:700,fontSize:11,color:th.tv.textColor,opacity:.45,marginBottom:7}}>MARTIN</div>
+                      <div style={{display:'flex',gap:4,alignItems:'center'}}>
+                        <span style={{background:th.tv.primaryColor,borderRadius:3,padding:'2px 6px',fontSize:9,color:'#fff',fontWeight:700,fontFamily:'var(--fb)'}}>LIVE</span>
+                        <span style={{color:th.tv.accentColor,fontFamily:'var(--fd)',fontWeight:900,fontSize:14,marginLeft:4}}>6</span>
+                        <span style={{color:th.tv.textColor,opacity:.4,fontFamily:'var(--fd)',fontWeight:700,fontSize:14}}>3</span>
+                      </div>
+                      {sel&&<span style={{position:'absolute',top:5,right:7,fontSize:14,color:th.tv.accentColor}}>✓</span>}
+                    </div>
+                    <div style={{padding:'7px 10px',background:sel?`${th.admin.clay}15`:'var(--cream)',borderTop:'1px solid var(--bdr-l)'}}>
+                      <div style={{fontFamily:'var(--fd)',fontWeight:700,fontSize:12,color:sel?th.admin.clay:'var(--txt)'}}>{th.label}</div>
+                      <div style={{fontFamily:'var(--fb)',fontSize:10,color:'var(--txt-l)',marginTop:1}}>{th.subtitle}</div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            <p style={{fontSize:12,color:'var(--txt-l)',fontFamily:'var(--fb)',marginTop:10}}>S'applique à l'admin et à l'écran TV. Les couleurs TV restent ajustables manuellement ci-dessous.</p>
+          </div>
+          <div className="card mb4">
             <h3 className="mb3">🏆 Tournoi</h3>
             <div className="mb3"><label className="lbl">Nom du tournoi</label><input className="inp" value={form.tournamentName} onChange={e=>s('tournamentName',e.target.value)}/></div>
             <div><label className="lbl">Nom du club</label><input className="inp" value={form.clubName} onChange={e=>s('clubName',e.target.value)}/></div>
+          </div>
+          <div className="card mb4">
+            <h3 className="mb3">🔗 Google Sheets</h3>
+            <p style={{fontSize:13,color:'var(--txt-m)',fontFamily:'var(--fb)',marginBottom:10,lineHeight:1.5}}>
+              Collez l'URL de votre Google Sheet de matchs. Le bouton "🔗 Google Sheets" importera directement sans demander l'URL.
+            </p>
+            <label className="lbl">URL du Google Sheet</label>
+            <input className="inp" value={form.gsheetUrl||''} onChange={e=>s('gsheetUrl',e.target.value)} placeholder="https://docs.google.com/spreadsheets/d/..." style={{fontSize:13,fontFamily:'monospace'}}/>
+            {form.gsheetUrl&&<div className="info-box" style={{marginTop:10,marginBottom:0}}>✅ Import en 1 clic configuré — le bouton importera automatiquement sans afficher de fenêtre.</div>}
+          </div>
+          <div className="card mb4">
+            <h3 className="mb3">🌤 Météo TV</h3>
+            <p style={{fontSize:13,color:'var(--txt-m)',fontFamily:'var(--fb)',marginBottom:10}}>Affiche la météo en temps réel dans le header TV. Coordonnées GPS de votre club.</p>
+            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:10}}>
+              <div><label className="lbl">Latitude</label><input className="inp" value={form.weatherLat||''} onChange={e=>s('weatherLat',e.target.value)} placeholder="ex: 50.6900"/></div>
+              <div><label className="lbl">Longitude</label><input className="inp" value={form.weatherLon||''} onChange={e=>s('weatherLon',e.target.value)} placeholder="ex: 2.8800"/></div>
+            </div>
+            <div className="mb2"><label className="lbl">Ville (affiché sous la météo)</label><input className="inp" value={form.weatherCity||''} onChange={e=>s('weatherCity',e.target.value)} placeholder="ex: Armentières"/></div>
+            <button className="btn btn-sm" onClick={()=>{
+              if(!navigator.geolocation)return alert('Géolocalisation non supportée');
+              navigator.geolocation.getCurrentPosition(p=>{s('weatherLat',p.coords.latitude.toFixed(4));s('weatherLon',p.coords.longitude.toFixed(4));},()=>alert('Position indisponible'));
+            }}>📍 Utiliser ma position</button>
+            {form.weatherLat&&form.weatherLon&&<div className="info-box" style={{marginTop:10,marginBottom:0}}>✅ Météo activée — {form.weatherCity||form.weatherLat+', '+form.weatherLon}</div>}
+          </div>
+          <div className="card mb4">
+            <h3 className="mb3">📱 QR Code TV</h3>
+            <p style={{fontSize:13,color:'var(--txt-m)',fontFamily:'var(--fb)',marginBottom:10}}>Affiche un QR code dans le header TV. Les spectateurs scannent pour accéder aux scores sur leur téléphone.</p>
+            <label className="lbl">URL à afficher dans le QR code</label>
+            <input className="inp" value={form.tvUrl||''} onChange={e=>s('tvUrl',e.target.value)} placeholder="https://votre-site.netlify.app"/>
+            {form.tvUrl&&<div style={{marginTop:12,display:'flex',alignItems:'center',gap:12}}>
+              <img src={'https://api.qrserver.com/v1/create-qr-code/?size=80x80&data='+encodeURIComponent(form.tvUrl)} style={{width:80,height:80,borderRadius:6,border:'1px solid var(--bdr-l)'}} alt="QR"/>
+              <span style={{fontSize:13,color:'var(--txt-m)',fontFamily:'var(--fb)'}}>Aperçu — laisser vide pour masquer le QR</span>
+            </div>}
+          </div>
+          <div className="card mb4">
+            <h3 className="mb3">🎾 Courts</h3>
+            <p style={{fontSize:13,color:'var(--txt-m)',fontFamily:'var(--fb)',marginBottom:10}}>Liste des courts proposés au démarrage d'un match.</p>
+            <div className="flex gap2 mb3">
+              <input className="inp" value={courtIn||''} onChange={e=>setCourtIn(e.target.value)} placeholder="Ex: Court N°3" onKeyDown={e=>{if(e.key==='Enter'&&(courtIn||'').trim()){s('courts',[...(form.courts||[]),courtIn.trim()]);setCourtIn('');}}}/>
+              <button className="btn btn-p btn-sm" onClick={()=>{if((courtIn||'').trim()){s('courts',[...(form.courts||[]),courtIn.trim()]);setCourtIn('');}}}>+</button>
+            </div>
+            {(form.courts||[]).map((c,i)=>(
+              <div key={i} className="flex ai gap2 mb2">
+                <input className="inp" value={c} onChange={e=>s('courts',(form.courts||[]).map((x,j)=>j===i?e.target.value:x))} style={{padding:'5px 8px',fontSize:13}}/>
+                <button className="btn btn-xs btn-ghost" style={{color:'var(--red)'}} onClick={()=>s('courts',(form.courts||[]).filter((_,j)=>j!==i))}>✕</button>
+              </div>
+            ))}
           </div>
           <div className="card mb4">
             <h3 className="mb3">📋 Catégories</h3>
@@ -977,6 +2034,72 @@ function SettingsTab({settings,onSave,fbConfig,onFBSave,fbStatus}){
                 <button className="btn btn-xs btn-ghost" style={{color:'var(--red)'}} onClick={()=>s('categories',form.categories.filter((_,j)=>j!==i))}>✕</button>
               </div>
             ))}
+          </div>
+          <div className="card mb4">
+            <h3 className="mb3">👤 Liste des joueurs</h3>
+            <p style={{fontSize:13,color:'var(--txt-m)',fontFamily:'var(--fb)',marginBottom:12,lineHeight:1.5}}>
+              Associez nom → club + classement. Lors d'un import PDF, Excel ou Google Sheets, les joueurs reconnus seront automatiquement complétés.
+            </p>
+            {/* Import rapide CSV/Excel */}
+            <div className="mb3" style={{padding:'10px 12px',background:'var(--sand-l)',borderRadius:'var(--r)'}}>
+              <div className="lbl mb2">Import rapide depuis un fichier (CSV ou Excel)</div>
+              <div style={{fontSize:12,color:'var(--txt-m)',fontFamily:'var(--fb)',marginBottom:8}}>Colonnes attendues : <strong>Nom Prénom, Club, Classement</strong></div>
+              <input type="file" id="players-import" accept=".csv,.xlsx,.xls" style={{display:'none'}} onChange={e=>{
+                const file=e.target.files[0];if(!file)return;
+                const r=new FileReader();
+                r.onload=ev=>{
+                  try{
+                    let rows;
+                    if(file.name.endsWith('.csv')){
+                      rows=ev.target.result.split(/\r?\n/).map(l=>l.split(',').map(c=>c.trim().replace(/^"|"$/g,'')));
+                    } else {
+                      const wb=XLSX.read(ev.target.result,{type:'binary'});
+                      rows=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1});
+                    }
+                    const imported=rows.slice(1).filter(r=>r[0]).map(r=>({name:String(r[0]||'').trim(),club:String(r[1]||'').trim(),ranking:String(r[2]||'').trim()})).filter(p=>p.name);
+                    // Les joueurs importés écrasent les existants (même nom = mise à jour)
+                    const kept=(form.players||[]).filter(p=>!imported.find(i=>i.name.toLowerCase()===p.name.toLowerCase()));
+                    s('players',[...kept,...imported]);
+                    alert(`✅ ${imported.length} joueur(s) importé(s)`);
+                  }catch(err){alert('Erreur : '+err.message);}
+                };
+                file.name.endsWith('.csv')?r.readAsText(file):r.readAsBinaryString(file);
+                e.target.value='';
+              }}/>
+              <label htmlFor="players-import" className="btn btn-sm" style={{cursor:'pointer'}}>📁 Importer un fichier</label>
+            </div>
+            {/* Ajout manuel */}
+            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 90px auto',gap:6,marginBottom:10}}>
+              <input className="inp" value={playerIn.name} onChange={e=>setPlayerIn(p=>({...p,name:e.target.value}))} placeholder="DUPONT Jean" style={{fontSize:13,padding:'5px 8px'}}/>
+              <input className="inp" value={playerIn.club} onChange={e=>setPlayerIn(p=>({...p,club:e.target.value}))} placeholder="Club Léo Lagrange" style={{fontSize:13,padding:'5px 8px'}}/>
+              <input className="inp" value={playerIn.ranking} onChange={e=>setPlayerIn(p=>({...p,ranking:e.target.value}))} placeholder="30/2" style={{fontSize:13,padding:'5px 8px'}}/>
+              <button className="btn btn-p btn-sm" onClick={()=>{
+                if(!playerIn.name.trim())return;
+                s('players',[...(form.players||[]).filter(p=>p.name!==playerIn.name),{...playerIn,name:playerIn.name.trim()}]);
+                setPlayerIn({name:'',club:'',ranking:''});
+              }}>+ Ajouter</button>
+            </div>
+            {/* Liste */}
+            {(form.players||[]).length===0
+              ?<p style={{fontSize:13,color:'var(--txt-l)',textAlign:'center',padding:'12px 0'}}>Aucun joueur enregistré</p>
+              :<div style={{maxHeight:280,overflowY:'auto'}}>
+                <table style={{width:'100%',borderCollapse:'collapse',fontSize:13}}>
+                  <thead><tr style={{background:'var(--sand-l)'}}>
+                    {['Nom Prénom','Club','Classement',''].map((h,i)=><th key={i} style={{padding:'5px 8px',textAlign:'left',fontSize:11,fontWeight:600,color:'var(--txt-m)',borderBottom:'1px solid var(--bdr)'}}>{h}</th>)}
+                  </tr></thead>
+                  <tbody>
+                    {(form.players||[]).map((p,i)=>(
+                      <tr key={i} style={{borderBottom:'1px solid var(--bdr-l)'}}>
+                        <td style={{padding:'4px 8px'}}><input className="inp" value={p.name} onChange={e=>s('players',form.players.map((x,j)=>j===i?{...x,name:e.target.value}:x))} style={{fontSize:12,padding:'2px 6px'}}/></td>
+                        <td style={{padding:'4px 8px'}}><input className="inp" value={p.club} onChange={e=>s('players',form.players.map((x,j)=>j===i?{...x,club:e.target.value}:x))} style={{fontSize:12,padding:'2px 6px'}}/></td>
+                        <td style={{padding:'4px 8px'}}><input className="inp" value={p.ranking} onChange={e=>s('players',form.players.map((x,j)=>j===i?{...x,ranking:e.target.value}:x))} style={{width:70,fontSize:12,padding:'2px 6px'}}/></td>
+                        <td style={{padding:'4px 8px'}}><button className="btn btn-xs btn-ghost" style={{color:'var(--red)'}} onClick={()=>s('players',form.players.filter((_,j)=>j!==i))}>✕</button></td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            }
           </div>
           <div className="card">
             <h3 className="mb3">🏷 Noms des formats</h3>
@@ -1047,8 +2170,9 @@ function TVDisplay({data,comments,user,onComment,onGoogleLogin,isPublic}){
   const today=todayStr();
   // Sidebar = matchs du jour (ou tous si aucun aujourd'hui)
   const todayM=useMemo(()=>{
-    const td=matches.filter(m=>m.date===today);
-    return (td.length>0?td:matches).sort((a,b)=>timeToMin(a.scheduledTime)-timeToMin(b.scheduledTime));
+    const td=matches.filter(m=>m.date&&m.date===today);
+    const withDate=matches.filter(m=>m.date);
+    return (td.length>0?td:withDate).sort((a,b)=>timeToMin(a.scheduledTime)-timeToMin(b.scheduledTime));
   },[matches,today]);
   // Live = TOUS les matchs en cours, peu importe la date
   const live=useMemo(()=>matches.filter(m=>m.status==='live'),[matches]);
@@ -1056,10 +2180,31 @@ function TVDisplay({data,comments,user,onComment,onGoogleLogin,isPublic}){
   const [sponsorIdx,setSponsorIdx]=useState(0);
   const [time,setTime]=useState(new Date());
   const [durs,setDurs]=useState({});
+  const [showStats,setShowStats]=useState(new Set());
   const [cmtIn,setCmtIn]=useState('');
-  const pc=settings.primaryColor||'#c45c26',tc=settings.textColor||'#f5e8d5',ac=settings.accentColor||'#c9a227',bg=settings.bgColor||'#2a1508';
+  const [palmIdx,setPalmIdx]=useState(0);
+  const [weather,setWeather]=useState(null);
+  const pc=settings.primaryColor||'#c45c26',tc=settings.textColor||'#f5e8d5',ac=settings.accentColor||'#c9a227',bg=settings.bgColor||'#120701';
+  const themeKey=settings.theme||'terre_battue';
+  const themeObj=THEMES[themeKey]||THEMES.terre_battue;
+  const layout=themeObj.layout||'classic';
+  const d=themeObj.design;
 
   useEffect(()=>{const t=setInterval(()=>{setTime(new Date());setDurs(d=>{const n={...d};live.forEach(m=>{if(m.startedAt)n[m.id]=fmtDur(Date.now()-m.startedAt)});return n});},1000);return()=>clearInterval(t);},[live.length]);
+  const finishedToday=matches.filter(m=>m.status==='finished'&&m.date===todayStr());
+  useEffect(()=>{if(finishedToday.length<2)return;const t=setInterval(()=>setPalmIdx(i=>(i+1)%finishedToday.length),6000);return()=>clearInterval(t);},[finishedToday.length]);
+  useEffect(()=>{
+    const lat=settings.weatherLat,lon=settings.weatherLon;
+    if(!lat||!lon)return;
+    const codes={0:'☀️ Clair',1:'🌤 Dégagé',2:'⛅ Nuageux',3:'☁️ Couvert',45:'🌫 Brouillard',48:'🌫 Brouillard',51:'🌦 Bruine',53:'🌦 Bruine',55:'🌧 Bruine',61:'🌧 Pluie',63:'🌧 Pluie',65:'🌧 Pluie forte',71:'🌨 Neige',73:'🌨 Neige',75:'❄️ Neige',80:'🌦 Averses',81:'🌧 Averses',82:'⛈ Averses',95:'⛈ Orage',96:'⛈ Orage',99:'⛈ Orage'};
+    const fetch1=async()=>{try{
+      const r=await fetch('https://api.open-meteo.com/v1/forecast?latitude='+lat+'&longitude='+lon+'&current=temperature_2m,weather_code,wind_speed_10m&wind_speed_unit=kmh&timezone=auto');
+      const j=await r.json();const c=j.current;const code=c.weather_code;
+      const label=codes[code]||'🌡 Météo';const parts=label.split(' ');
+      setWeather({emoji:parts[0],desc:parts.slice(1).join(' '),temp:Math.round(c.temperature_2m),wind:Math.round(c.wind_speed_10m)});
+    }catch(e){console.warn('Météo indisponible',e);}};
+    fetch1();const t=setInterval(fetch1,30*60*1000);return()=>clearInterval(t);
+  },[settings.weatherLat,settings.weatherLon]);
   useEffect(()=>{if(live.length<=2)return;const t=setInterval(()=>setScrollIdx(i=>(i+2)%live.length),9000);return()=>clearInterval(t);},[live.length]);
   useEffect(()=>{if(!(settings.sponsors?.length))return;const t=setInterval(()=>setSponsorIdx(i=>(i+1)%settings.sponsors.length),(settings.sponsorInterval||10)*1000);return()=>clearInterval(t);},[settings.sponsors?.length,settings.sponsorInterval]);
 
@@ -1071,50 +2216,280 @@ function TVDisplay({data,comments,user,onComment,onGoogleLogin,isPublic}){
     const isFinal=match.sets.length===f.sets,isSuperFinal=f.finalSuper&&isFinal,isTBOnly=f.tbOnly;
     const si=match.sets.length-1;
     const isAtTB=!isSuperFinal&&!isTBOnly&&match.sets[si]&&match.sets[si][0]===6&&match.sets[si][1]===6;
-    const dur=match.startedAt?(isDone&&match.endedAt?fmtDur(match.endedAt-match.startedAt):durs[match.id]||''):'';
-    const rowP=pi=>{
-      const oi=1-pi,won=match.winner===pi+1,lead=sw[pi]>sw[oi];
-      const pn=pi===0?match.player1:match.player2,pclub=pi===0?match.p1Club:match.p2Club,pr=pi===0?match.p1Ranking:match.p2Ranking;
+    const dur=match.startedAt?(isDone&&match.endedAt?getMatchDur(match,match.endedAt):durs[match.id]||''):'';
+    const cardStyle={borderRadius:d.cardRadius,overflow:'hidden',boxShadow:`0 4px 24px rgba(0,0,0,.4)`,border:`${d.cardBorder} ${isDone?ac:pc}44`};
+    const tbLabel=isSuperFinal||isTBOnly?'ST':isAtTB?'TB':null;
+    // Score dans le jeu (mode point)
+    const isPointMode=match.scoringMode==='point';
+    const gs=match.gameScore||[0,0];
+    const glTV=p=>tbLabel?String(p):POINT_LABELS[Math.min(p,4)]||'Ad';
+
+    // ── Stats communes ──────────────────────────────────────────────
+    const StatsPanel=()=>{
+      const st=computeServiceStats(match);
+      const pt=computePointStats(match);
+      if(!st&&!pt)return null;
+      const pct=(a,b)=>b>0?Math.round(a/b*100)+'%':'—';
+      const nameOf=pi=>{const n=pi===0?match.player1:match.player2;const caps=n.trim().split(' ').filter(w=>w.length>1&&w===w.toUpperCase());return(caps.length>0?caps.slice(0,2).join(' '):n.split(' ')[0]);};
+      const Row=({label,v1,v2,hi})=>(<tr style={{borderTop:'1px solid rgba(255,255,255,.06)'}}><td style={{fontFamily:'var(--fb)',fontSize:'clamp(9px,1vw,12px)',color:tc,opacity:.6,paddingTop:4,paddingBottom:4}}>{label}</td>{[[v1,hi],[v2,hi]].map(([v,h],i)=><td key={i} style={{textAlign:'center',paddingTop:4,paddingBottom:4}}><span style={{fontFamily:'var(--fd)',fontWeight:900,fontSize:'clamp(13px,1.8vw,20px)',color:h?ac:tc,opacity:h?1:.55}}>{v}</span></td>)}</tr>);
       return(
-        <div className="tv-prow" key={pi} style={{background:pi%2===0?'rgba(255,255,255,.02)':'transparent',opacity:isDone&&!won?.55:1}}>
-          <div className="tv-serve" style={{background:match.server===pi+1&&isLive?pc:'transparent',boxShadow:match.server===pi+1&&isLive?`0 0 10px ${pc}99`:'none'}}/>
-          <div className="tv-pname" style={{color:won?ac:tc}}>
-            <div style={{fontSize:'clamp(18px,2.8vw,28px)',fontWeight:won?900:700,letterSpacing:'-.3px',textShadow:won?`0 0 20px ${ac}66`:'none'}}>{won&&'🏆 '}{pn}</div>
-            <div style={{fontSize:'clamp(10px,1.2vw,13px)',opacity:.5,fontFamily:'var(--fb)',marginTop:2,letterSpacing:.3}}>{pclub}{pr?` · ${pr}`:''}</div>
-          </div>
-          <div className="tv-psets">
-            {match.sets.map((st,i)=>{
-              const setDone=checkSetWon(st)||(isDone&&i===match.sets.length-1&&st[0]!==st[1]);
-              const w=setDone&&st[pi]>st[oi];
-              return<div key={i} className={`tv-pset${w?' w':''}`} style={{color:w?'#fff':tc,fontWeight:w?900:600}}>{st[pi]}</div>;
-            })}
-          </div>
-          <div className="tv-pgame" style={{background:isLive?`${pc}33`:'transparent',color:isLive?pc:'transparent',border:`2px solid ${isLive?pc:'transparent'}`,visibility:isLive?'visible':'hidden',boxShadow:isLive?`0 0 12px ${pc}44`:'none'}}>{isSuperFinal||isTBOnly?'ST':isAtTB?'TB':'—'}</div>
-          <div className={`tv-swon${lead?' lead':''}`} style={{color:lead?ac:'rgba(255,255,255,.2)',textShadow:lead?`0 0 20px ${ac}88`:'none'}}>{sw[pi]}</div>
+        <div style={{padding:'10px 20px',borderTop:`1px solid rgba(255,255,255,.1)`,background:'rgba(0,0,0,.2)'}}>
+          <div style={{fontFamily:'var(--fb)',fontSize:'clamp(8px,.9vw,10px)',letterSpacing:2,textTransform:'uppercase',opacity:.45,color:tc,marginBottom:8}}>Statistiques</div>
+          <table style={{width:'100%',borderCollapse:'collapse'}}>
+            <thead><tr><td style={{width:'45%'}}/>
+              {[0,1].map(pi=><td key={pi} style={{textAlign:'center',fontFamily:'var(--fd)',fontWeight:700,fontSize:'clamp(10px,1.2vw,14px)',color:match.winner===pi+1?ac:tc,paddingBottom:5,opacity:match.winner&&match.winner!==pi+1?.5:1}}>{nameOf(pi)}</td>)}
+            </tr></thead>
+            <tbody>
+              {st&&<><Row label="🎾 Jeux service gagnés" v1={st[0].won} v2={st[1].won} hi/><Row label="💔 Jeux service perdus" v1={st[0].lost} v2={st[1].lost}/><Row label="⚡ Breaks gagnés" v1={st[1].lost} v2={st[0].lost} hi/></>}
+              {pt&&<>
+                {st&&<tr><td colSpan={3}><div style={{height:1,background:'rgba(255,255,255,.1)',margin:'4px 0'}}/></td></tr>}
+                <Row label="📊 % pts sur service" v1={pct(pt.p1.serveWon,pt.p1.servePts)} v2={pct(pt.p2.serveWon,pt.p2.servePts)} hi/>
+                <Row label="↩ % pts en retour" v1={pct(pt.p1.returnWon,pt.p1.returnPts)} v2={pct(pt.p2.returnWon,pt.p2.returnPts)} hi/>
+                <Row label="🔴 BP convertis" v1={pt.p1.bpConv+'/'+pt.p1.bpOpp} v2={pt.p2.bpConv+'/'+pt.p2.bpOpp} hi/>
+                <Row label="🛡 BP sauvées" v1={pt.p1.bpSaved+'/'+pt.p1.bpFaced} v2={pt.p2.bpSaved+'/'+pt.p2.bpFaced}/>
+              </>}
+            </tbody>
+          </table>
         </div>
       );
     };
-    return(
-      <div className="tv-card" style={{borderTop:`3px solid ${isDone?ac:pc}`}}>
-        <div className="tv-card-hdr" style={{color:tc,background:isDone?`${ac}18`:'rgba(0,0,0,.2)'}}>
-          {isLive&&<><div className="dot" style={{width:8,height:8}}/><span style={{color:'#ff5555',fontWeight:600}}>LIVE</span></>}
-          {isDone&&<span style={{color:ac,fontWeight:700,fontSize:13}}>TERMINÉ</span>}
-          {match.category&&<span style={{opacity:.7}}>{match.category}</span>}
-          {match.round&&<span style={{opacity:.5}}>• {match.round}</span>}
-          {match.court&&<span style={{opacity:.5}}>• {match.court}</span>}
-          {match.scheduledTime&&<span style={{color:isDone?ac:ac,marginLeft:'auto'}}>🕐 {match.scheduledTime}</span>}
-          {!match.scheduledTime&&<span style={{marginLeft:'auto',opacity:.3}}>{f.label}</span>}
-        </div>
-        {rowP(0)}{rowP(1)}
-        {isDone&&(
-          <div style={{padding:'8px 18px',borderTop:`1px solid ${ac}33`,background:`${ac}10`,textAlign:'center'}}>
-            <span style={{fontFamily:'var(--fd)',color:ac,fontWeight:700,fontSize:'clamp(14px,1.8vw,20px)',letterSpacing:1}}>
-              {match.sets.map(s=>`${s[0]}–${s[1]}`).join('  ')}
-            </span>
-            {dur&&<span style={{fontFamily:'var(--fb)',color:tc,opacity:.5,fontSize:12,marginLeft:14}}>⏱ {dur}</span>}
+
+    // ── Header commun ───────────────────────────────────────────────
+    const CardHeader=({accent})=>(
+      <div style={{padding:'7px 16px',display:'flex',alignItems:'center',gap:10,background:isDone?`${ac}20`:d.headerBg,fontFamily:'var(--fb)',fontSize:12,letterSpacing:1,textTransform:'uppercase',color:tc,borderBottom:`1px solid rgba(255,255,255,.08)`}}>
+        {isLive&&<><div className="dot" style={{width:8,height:8}}/><span style={{color:'#ff4444',fontWeight:700,letterSpacing:2}}>LIVE</span></>}
+        {isDone&&<span style={{color:ac,fontWeight:700}}>TERMINÉ</span>}
+        {match.category&&<span style={{opacity:.7,fontSize:11}}>{match.category}</span>}
+        {match.round&&<span style={{opacity:.45,fontSize:10}}>• {match.round}</span>}
+        {match.court&&<span style={{opacity:.45,fontSize:10}}>• {match.court}</span>}
+        {match.scheduledTime&&<span style={{color:ac,marginLeft:'auto',fontWeight:700}}>🕐 {match.scheduledTime}</span>}
+        {dur&&!match.scheduledTime&&<span style={{marginLeft:'auto',color:ac,fontWeight:700}}>⏱ {dur}</span>}
+      </div>
+    );
+
+    // ══════════════════════════════════════════════════════════════
+    // LAYOUT : CLASSIC (Terre Battue)
+    // ══════════════════════════════════════════════════════════════
+    if(layout==='classic')return(
+      <div style={{...cardStyle,background:d.cardBg,borderTop:`3px solid ${isDone?ac:pc}`}}>
+        <CardHeader/>
+        {[0,1].map(pi=>{
+          const oi=1-pi,won=match.winner===pi+1,lead=sw[pi]>sw[oi];
+          const pn=pi===0?match.player1:match.player2,pclub=pi===0?match.p1Club:match.p2Club,pr=pi===0?match.p1Ranking:match.p2Ranking;
+          const parts=splitDouble(pn,pr,pclub);
+          return(
+            <div key={pi} className="tv-prow" style={{opacity:isDone&&!won?.5:1,background:pi%2===0?'rgba(255,255,255,.02)':'transparent'}}>
+              <div className="tv-serve" style={{background:match.server===pi+1&&isLive?pc:'transparent',boxShadow:match.server===pi+1&&isLive?`0 0 10px ${pc}`:'none'}}/>
+              <div className="tv-pname" style={{color:won?ac:tc}}>
+                {parts.map((p,i)=>(
+                  <div key={i} style={{marginBottom:i<parts.length-1?3:0}}>
+                    <div style={{display:'flex',alignItems:'center',gap:8}}>
+                      {i===0&&won&&<span>🏆 </span>}
+                      <span style={{fontSize:'clamp(16px,2.4vw,28px)',fontWeight:won?900:700,textShadow:won?`0 0 20px ${ac}66`:'none'}}>{p.n}</span>
+                      {p.r&&<span style={{fontSize:'clamp(11px,1.3vw,16px)',fontWeight:700,color:ac,background:`${ac}22`,padding:'1px 7px',borderRadius:4}}>{p.r}</span>}
+                    </div>
+                    {p.c&&<div style={{fontSize:'clamp(10px,1.2vw,14px)',opacity:.6,fontFamily:'var(--fb)',marginTop:1}}>{p.c}</div>}
+                  </div>
+                ))}
+              </div>
+              {isLive&&isPointMode&&<div style={{fontFamily:'var(--fd)',fontWeight:900,fontSize:'clamp(22px,3vw,42px)',color:pi===0?pc:ac,minWidth:'clamp(36px,4vw,56px)',textAlign:'center',lineHeight:1,textShadow:`0 0 16px ${pi===0?pc:ac}88`,marginRight:16}}>{glTV(gs[pi])}</div>}
+              <div className="tv-psets">{match.sets.map((st,i)=>{const setDone=checkSetWon(st)||(isDone&&i===match.sets.length-1&&st[0]!==st[1]);const w=setDone&&st[pi]>st[oi];return<div key={i} className={`tv-pset${w?' w':''}`} style={{fontSize:d.scoreFontSize,color:w?'#fff':tc,fontWeight:w?900:600}}>{st[pi]}</div>;})}</div>
+              <div className={`tv-swon${lead?' lead':''}`} style={{color:lead?ac:'rgba(255,255,255,.2)',textShadow:lead?`0 0 20px ${ac}88`:'none',fontSize:'clamp(26px,3.5vw,40px)'}}>{sw[pi]}</div>
+            </div>
+          );
+        })}
+        {isDone&&<div style={{padding:'8px 18px',borderTop:`1px solid ${ac}33`,background:`${ac}10`,textAlign:'center'}}><span style={{color:ac,fontWeight:700,fontSize:'clamp(14px,1.8vw,20px)'}}>{match.sets.map(s=>`${s[0]}–${s[1]}`).join('  ')}</span>{dur&&<span style={{color:tc,opacity:.7,fontSize:'clamp(12px,1.5vw,18px)',marginLeft:14}}>⏱ {dur}</span>}</div>}
+        {!isDone&&tbLabel&&<div style={{textAlign:'center',padding:'5px',fontSize:'clamp(11px,1.3vw,16px)',color:pc,fontWeight:700,fontFamily:'var(--fb)'}}>⚡ {tbLabel==='TB'?'TIE-BREAK':'SUPER TIE-BREAK'}</div>}
+        {!isDone&&<div className="tv-card-foot" style={{color:tc}}>{f.label}{dur&&<><span style={{opacity:.3}}>•</span><span style={{fontSize:'clamp(14px,1.8vw,22px)',fontWeight:700,color:ac}}>⏱ {dur}</span></>}</div>}
+        <StatsPanel/>
+      </div>
+    );
+
+    // ══════════════════════════════════════════════════════════════
+    // LAYOUT : ELEGANT (Wimbledon, Prestige) — double-bordure, serif
+    // ══════════════════════════════════════════════════════════════
+    if(layout==='elegant')return(
+      <div style={{...cardStyle,background:d.cardBg,borderTop:`4px double ${isDone?ac:pc}`,borderLeft:`4px double ${isDone?ac:pc}33`}}>
+        <CardHeader/>
+        {/* Ligne décorative */}
+        <div style={{height:2,background:`linear-gradient(90deg,${pc},${ac},${pc}33)`,opacity:.6}}/>
+        {[0,1].map(pi=>{
+          const oi=1-pi,won=match.winner===pi+1,lead=sw[pi]>sw[oi];
+          const pn=pi===0?match.player1:match.player2,pclub=pi===0?match.p1Club:match.p2Club,pr=pi===0?match.p1Ranking:match.p2Ranking;
+          const parts=splitDouble(pn,pr,pclub);
+          return(
+            <div key={pi} style={{display:'flex',alignItems:'center',padding:'14px 20px',borderBottom:pi===0?`1px solid rgba(255,255,255,.08)`:'none',opacity:isDone&&!won?.45:1}}>
+              {/* Indicateur service */}
+              <div style={{width:3,alignSelf:'stretch',background:match.server===pi+1&&isLive?pc:'transparent',marginRight:14,borderRadius:2,boxShadow:match.server===pi+1&&isLive?`0 0 8px ${pc}`:'none'}}/>
+              {/* Nom joueur */}
+              <div style={{flex:1}}>
+                {parts.map((p,i)=>(
+                  <div key={i} style={{marginBottom:i<parts.length-1?6:0}}>
+                    <div style={{display:'flex',alignItems:'baseline',gap:10}}>
+                      <span style={{fontFamily:'var(--fd)',fontSize:'clamp(15px,2.2vw,26px)',fontWeight:won?900:600,color:won?ac:tc,letterSpacing:won?'.5px':'0px',textTransform:'uppercase'}}>{won&&'🏆 '}{p.n}</span>
+                      {p.r&&<span style={{fontFamily:'var(--fb)',fontSize:'clamp(10px,1.2vw,14px)',color:ac,fontWeight:700,border:`1px solid ${ac}66`,padding:'0 6px',borderRadius:2}}>{p.r}</span>}
+                    </div>
+                    {p.c&&<div style={{fontFamily:'var(--fb)',fontSize:'clamp(9px,1vw,12px)',opacity:.5,marginTop:2,letterSpacing:1,textTransform:'uppercase',color:tc}}>{p.c}</div>}
+                  </div>
+                ))}
+              </div>
+              {/* Score dans le jeu */}
+              {isLive&&isPointMode&&<div style={{fontFamily:'var(--fd)',fontWeight:900,fontSize:'clamp(22px,3vw,42px)',color:pi===0?pc:ac,minWidth:'clamp(36px,4vw,50px)',textAlign:'center',marginRight:20,textShadow:`0 0 16px ${pi===0?pc:ac}88`}}>{glTV(gs[pi])}</div>}
+              {/* Scores par set */}
+              <div style={{display:'flex',gap:8,marginRight:16}}>
+                {match.sets.map((st,i)=>{
+                  const setDone=checkSetWon(st)||(isDone&&i===match.sets.length-1&&st[0]!==st[1]);
+                  const w=setDone&&st[pi]>st[oi];
+                  return(
+                    <div key={i} style={{display:'flex',flexDirection:'column',alignItems:'center',minWidth:28}}>
+                      <span style={{fontFamily:'var(--fd)',fontWeight:w?900:500,fontSize:d.scoreFontSize,color:w?'#fff':tc,opacity:w?1:.4,lineHeight:1}}>{st[pi]}</span>
+                      {i===match.sets.length-1&&<div style={{width:'100%',height:2,background:w?ac:'transparent',marginTop:2,borderRadius:1}}/>}
+                    </div>
+                  );
+                })}
+              </div>
+              {/* Sets gagnés */}
+              <div style={{fontFamily:'var(--fd)',fontWeight:900,fontSize:'clamp(24px,3.2vw,38px)',color:lead?ac:'rgba(255,255,255,.15)',minWidth:40,textAlign:'center',textShadow:lead?`0 0 16px ${ac}88`:'none'}}>{sw[pi]}</div>
+            </div>
+          );
+        })}
+        <div style={{height:2,background:`linear-gradient(90deg,${ac}33,${ac},${ac}33)`,opacity:.4}}/>
+        {isDone&&<div style={{padding:'8px 20px',textAlign:'center',background:`${ac}12`}}><span style={{color:ac,fontWeight:700,fontSize:'clamp(13px,1.6vw,18px)',letterSpacing:2}}>{match.sets.map(s=>`${s[0]}–${s[1]}`).join('  ')}</span></div>}
+        {!isDone&&<div style={{padding:'6px 20px',display:'flex',gap:12,alignItems:'center',fontSize:'clamp(10px,1.1vw,13px)',color:tc,opacity:.6,fontFamily:'var(--fb)'}}>{f.label}{tbLabel&&<span style={{color:pc,fontWeight:700,opacity:1}}>⚡ {tbLabel==='TB'?'Tie-Break':'Super TB'}</span>}{dur&&<span style={{marginLeft:'auto',color:ac,fontWeight:700,opacity:1,fontSize:'clamp(13px,1.6vw,20px)'}}>⏱ {dur}</span>}</div>}
+        <StatsPanel/>
+      </div>
+    );
+
+    // ══════════════════════════════════════════════════════════════
+    // LAYOUT : STADIUM (US Open, Moderne) — score central énorme
+    // ══════════════════════════════════════════════════════════════
+    if(layout==='stadium'){
+      const glow=layout==='stadium'&&themeKey==='moderne'?`0 0 30px ${pc}, 0 0 60px ${pc}44`:`0 0 20px ${pc}88`;
+      return(
+        <div style={{...cardStyle,background:d.cardBg}}>
+          <CardHeader/>
+          {/* Zone scoreboard centrale */}
+          <div style={{padding:'16px 20px',background:`linear-gradient(180deg,${d.headerBg} 0%,transparent 100%)`}}>
+            {/* En-tête scores */}
+            <div style={{display:'flex',justifyContent:'flex-end',gap:20,marginBottom:8,paddingRight:20}}>
+              {match.sets.map((_,i)=>(
+                <div key={i} style={{minWidth:36,textAlign:'center',fontFamily:'var(--fb)',fontSize:'clamp(9px,1vw,12px)',color:tc,opacity:.4,letterSpacing:1,textTransform:'uppercase'}}>S{i+1}</div>
+              ))}
+              <div style={{minWidth:44,textAlign:'center',fontFamily:'var(--fb)',fontSize:'clamp(9px,1vw,12px)',color:ac,opacity:.7,letterSpacing:1}}>SET</div>
+            </div>
+            {/* Lignes joueurs */}
+            {[0,1].map(pi=>{
+              const oi=1-pi,won=match.winner===pi+1,lead=sw[pi]>sw[oi];
+              const pn=pi===0?match.player1:match.player2,pclub=pi===0?match.p1Club:match.p2Club,pr=pi===0?match.p1Ranking:match.p2Ranking;
+              const parts=splitDouble(pn,pr,pclub);
+              return(
+                <div key={pi} style={{display:'flex',alignItems:'center',gap:16,padding:'10px 0',borderBottom:pi===0?`1px solid rgba(255,255,255,.06)`:'none',opacity:isDone&&!won?.45:1}}>
+                  {/* Nom condensé */}
+                  <div style={{flex:1,minWidth:0}}>
+                    {parts.map((p,i)=>(
+                      <div key={i} style={{display:'flex',alignItems:'center',gap:8,marginBottom:i<parts.length-1?2:0}}>
+                        <div style={{width:3,height:'1em',background:match.server===pi+1&&isLive?pc:'transparent',borderRadius:2,flexShrink:0}}/>
+                        <span style={{fontFamily:'var(--fd)',fontWeight:900,fontSize:'clamp(12px,1.6vw,20px)',color:won?ac:tc,textTransform:'uppercase',letterSpacing:'1px',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{won&&'🏆'} {p.n}</span>
+                        {p.r&&<span style={{fontFamily:'var(--fb)',fontSize:'clamp(9px,1vw,12px)',color:ac,flexShrink:0}}>{p.r}</span>}
+                      </div>
+                    ))}
+                    {parts[0]?.c&&<div style={{fontSize:'clamp(9px,.9vw,11px)',color:tc,opacity:.4,fontFamily:'var(--fb)',marginLeft:11}}>{parts[0].c}</div>}
+                  </div>
+                  {/* Score dans le jeu */}
+                  {isLive&&isPointMode&&<div style={{minWidth:'clamp(32px,3.5vw,48px)',textAlign:'center',fontFamily:'var(--fd)',fontWeight:900,fontSize:'clamp(20px,2.8vw,38px)',color:pi===0?pc:ac,textShadow:`0 0 16px ${pi===0?pc:ac}88`,lineHeight:1,marginRight:12}}>{glTV(gs[pi])}</div>}
+                  {/* Scores */}
+                  {match.sets.map((st,i)=>{
+                    const setDone=checkSetWon(st)||(isDone&&i===match.sets.length-1&&st[0]!==st[1]);
+                    const w=setDone&&st[pi]>st[oi];
+                    return(
+                      <div key={i} style={{minWidth:36,textAlign:'center',fontFamily:'var(--fd)',fontWeight:w?900:400,fontSize:d.scoreFontSize,color:w?'#fff':tc,opacity:w?1:.35,textShadow:w?glow:'none',lineHeight:1}}>{st[pi]}</div>
+                    );
+                  })}
+                  {/* Sets gagnés */}
+                  <div style={{minWidth:44,textAlign:'center',fontFamily:'var(--fd)',fontWeight:900,fontSize:'clamp(28px,3.8vw,50px)',color:lead?ac:'rgba(255,255,255,.1)',textShadow:lead?`0 0 20px ${ac}cc`:'none',lineHeight:1}}>{sw[pi]}</div>
+                </div>
+              );
+            })}
           </div>
-        )}
-        {!isDone&&<div className="tv-card-foot" style={{color:tc}}>{f.label}{dur&&<><span style={{opacity:.3}}>•</span><span>⏱ {dur}</span></>}</div>}
+          {/* Pied */}
+          <div style={{padding:'8px 20px',display:'flex',gap:12,alignItems:'center',borderTop:`1px solid rgba(255,255,255,.06)`,background:d.headerBg}}>
+            <span style={{fontFamily:'var(--fb)',fontSize:'clamp(9px,1vw,12px)',color:tc,opacity:.5,letterSpacing:1}}>{f.label}</span>
+            {tbLabel&&<span style={{color:pc,fontWeight:700,fontSize:'clamp(10px,1.1vw,14px)',textShadow:glow}}>⚡ {tbLabel==='TB'?'TIE-BREAK':'SUPER TB'}</span>}
+            {isDone&&<span style={{color:ac,fontWeight:700,fontSize:'clamp(11px,1.3vw,16px)',letterSpacing:2}}>{match.sets.map(s=>`${s[0]}-${s[1]}`).join('  ')}</span>}
+            {dur&&<span style={{marginLeft:'auto',fontFamily:'var(--fd)',fontWeight:900,fontSize:'clamp(14px,1.8vw,24px)',color:ac,textShadow:`0 0 16px ${ac}88`}}>⏱ {dur}</span>}
+          </div>
+          <StatsPanel/>
+        </div>
+      );
+    }
+
+    // ══════════════════════════════════════════════════════════════
+    // LAYOUT : MODERN (Australian Open) — cartes colorées par joueur
+    // ══════════════════════════════════════════════════════════════
+    const colors=[pc,ac]; // p1=primary, p2=accent
+    return(
+      <div style={{...cardStyle,background:'transparent',border:'none',gap:0,display:'flex',flexDirection:'column'}}>
+        <CardHeader/>
+        <div style={{display:'flex',flexDirection:'column',gap:3}}>
+          {[0,1].map(pi=>{
+            const oi=1-pi,won=match.winner===pi+1,lead=sw[pi]>sw[oi];
+            const pn=pi===0?match.player1:match.player2,pclub=pi===0?match.p1Club:match.p2Club,pr=pi===0?match.p1Ranking:match.p2Ranking;
+            const parts=splitDouble(pn,pr,pclub);
+            const col=colors[pi];
+            return(
+              <div key={pi} style={{
+                background:isDone&&!won?'rgba(255,255,255,.04)':`linear-gradient(135deg,${col}22 0%,${col}0a 100%)`,
+                border:`1px solid ${col}${won?'66':'22'}`,
+                borderRadius:d.cardRadius,
+                padding:'14px 20px',
+                display:'flex',alignItems:'center',gap:14,
+                opacity:isDone&&!won?.5:1,
+                boxShadow:won?`inset 0 0 40px ${col}15, 0 2px 12px ${col}22`:'none',
+              }}>
+                {/* Indicateur serveur */}
+                <div style={{width:4,height:40,background:match.server===pi+1&&isLive?col:'transparent',borderRadius:2,flexShrink:0,boxShadow:match.server===pi+1&&isLive?`0 0 12px ${col}`:'none'}}/>
+                {/* Nom */}
+                <div style={{flex:1}}>
+                  {parts.map((p,i)=>(
+                    <div key={i} style={{marginBottom:i<parts.length-1?4:0}}>
+                      <div style={{display:'flex',alignItems:'center',gap:8}}>
+                        {won&&i===0&&<span style={{fontSize:'clamp(14px,1.8vw,20px)'}}>🏆</span>}
+                        <span style={{fontFamily:'var(--fd)',fontWeight:won?900:700,fontSize:d.nameFontSize,color:won?'#fff':tc}}>{p.n}</span>
+                        {p.r&&<span style={{fontFamily:'var(--fb)',fontWeight:700,fontSize:'clamp(10px,1.2vw,14px)',color:col,background:`${col}22`,padding:'2px 8px',borderRadius:20}}>{p.r}</span>}
+                      </div>
+                      {p.c&&<div style={{fontFamily:'var(--fb)',fontSize:'clamp(9px,1vw,12px)',opacity:.5,color:tc,marginTop:2}}>{p.c}</div>}
+                    </div>
+                  ))}
+                </div>
+                {/* Scores */}
+                <div style={{display:'flex',gap:10,alignItems:'center'}}>
+                  {isLive&&isPointMode&&<div style={{fontFamily:'var(--fd)',fontWeight:900,fontSize:'clamp(20px,2.8vw,38px)',color:col,textShadow:`0 0 16px ${col}88`,minWidth:'clamp(32px,3.5vw,48px)',textAlign:'center',lineHeight:1,marginRight:6}}>{glTV(gs[pi])}</div>}
+                  {match.sets.map((st,i)=>{
+                    const setDone=checkSetWon(st)||(isDone&&i===match.sets.length-1&&st[0]!==st[1]);
+                    const w=setDone&&st[pi]>st[oi];
+                    return(
+                      <div key={i} style={{display:'flex',flexDirection:'column',alignItems:'center',background:w?`${col}33`:'rgba(255,255,255,.05)',borderRadius:6,padding:'4px 10px',border:`1px solid ${w?col+'66':'rgba(255,255,255,.08)'}`}}>
+                        <span style={{fontFamily:'var(--fd)',fontWeight:900,fontSize:d.scoreFontSize,color:w?'#fff':tc,opacity:w?1:.45,lineHeight:1}}>{st[pi]}</span>
+                      </div>
+                    );
+                  })}
+                  {/* Sets gagnés */}
+                  <div style={{background:lead?`${col}44`:'rgba(255,255,255,.05)',borderRadius:8,padding:'4px 12px',minWidth:44,textAlign:'center',border:`2px solid ${lead?col+'88':'transparent'}`}}>
+                    <span style={{fontFamily:'var(--fd)',fontWeight:900,fontSize:'clamp(22px,3vw,36px)',color:lead?'#fff':'rgba(255,255,255,.15)',lineHeight:1}}>{sw[pi]}</span>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+        {/* Pied */}
+        <div style={{padding:'8px 16px',display:'flex',gap:12,alignItems:'center',background:d.headerBg,borderTop:`1px solid rgba(255,255,255,.06)`,marginTop:3,borderRadius:`0 0 ${d.cardRadius}px ${d.cardRadius}px`}}>
+          <span style={{fontFamily:'var(--fb)',fontSize:'clamp(9px,1vw,12px)',color:tc,opacity:.5}}>{f.label}</span>
+          {tbLabel&&<span style={{color:pc,fontWeight:700,fontSize:'clamp(10px,1.2vw,14px)'}}>⚡ {tbLabel==='TB'?'TIE-BREAK':'SUPER TB'}</span>}
+          {isDone&&<span style={{color:ac,fontWeight:700,fontSize:'clamp(11px,1.4vw,16px)',letterSpacing:1}}>{match.sets.map(s=>`${s[0]}-${s[1]}`).join('  ')}</span>}
+          {dur&&<span style={{marginLeft:'auto',fontFamily:'var(--fd)',fontWeight:900,fontSize:'clamp(14px,1.8vw,22px)',color:ac}}>⏱ {dur}</span>}
+        </div>
+        <StatsPanel/>
       </div>
     );
   };
@@ -1197,6 +2572,7 @@ function TVDisplay({data,comments,user,onComment,onGoogleLogin,isPublic}){
           </div>
         ))}
         {m.round&&<div style={{fontSize:10,opacity:.3,marginTop:4,fontFamily:'var(--fb)',color:tc,textTransform:'uppercase',letterSpacing:.5}}>{m.round}</div>}
+        {m.round&&<div style={{fontSize:10,opacity:.3,marginTop:4,fontFamily:'var(--fb)',color:tc,textTransform:'uppercase',letterSpacing:.5}}>{m.round}</div>}
       </div>
     );
   };
@@ -1205,23 +2581,39 @@ function TVDisplay({data,comments,user,onComment,onGoogleLogin,isPublic}){
     <div className="tv-wrap" style={{background:settings.bgImage?`url(${settings.bgImage}) center/cover no-repeat fixed`:bg,color:tc}}>
       <div style={{position:'fixed',inset:0,zIndex:0}}>
         <div style={{position:'absolute',inset:0,background:settings.bgImage?'rgba(0,0,0,.65)':bg}}/>
-        {!settings.bgImage&&<div style={{position:'absolute',inset:0,background:`radial-gradient(ellipse at 20% 50%, ${pc}18 0%, transparent 60%), radial-gradient(ellipse at 80% 50%, ${ac}0f 0%, transparent 60%)`}}/>}
+        {!settings.bgImage&&<div style={{position:'absolute',inset:0,background:d.pattern}}/>}
         <div style={{position:'absolute',inset:0,opacity:.025,backgroundImage:'repeating-linear-gradient(0deg,transparent,transparent 3px,rgba(255,255,255,.4)3px,rgba(255,255,255,.4)4px),repeating-linear-gradient(90deg,transparent,transparent 60px,rgba(255,255,255,.04)60px,rgba(255,255,255,.04)61px)'}}/>
         <div style={{position:'absolute',top:0,left:0,right:0,height:3,background:`linear-gradient(90deg,transparent 0%,${pc} 30%,${ac} 50%,${pc} 70%,transparent 100%)`}}/>
         <div style={{position:'absolute',bottom:0,left:0,right:0,height:2,background:`linear-gradient(90deg,transparent,${pc}88,${ac}88,${pc}88,transparent)`,opacity:.8}}/>
       </div>
       <div className="tv-body">
-        <div className="tv-hdr">
+        <div className="tv-hdr" style={{borderBottom:`3px solid ${pc}`,background:`linear-gradient(135deg, rgba(0,0,0,.7) 0%, rgba(0,0,0,.4) 100%)`}}>
           <div className="flex ai gap4">
-            {settings.clubLogo&&<img src={settings.clubLogo} style={{height:60,objectFit:'contain',filter:'drop-shadow(0 0 8px rgba(255,255,255,.2))'}} alt="logo"/>}
+            {settings.clubLogo&&<img src={settings.clubLogo} style={{height:64,objectFit:'contain',filter:'drop-shadow(0 0 10px rgba(255,255,255,.3))'}} alt="logo"/>}
             <div>
-              <div style={{fontFamily:'var(--fb)',fontSize:11,letterSpacing:4,textTransform:'uppercase',opacity:.7,color:tc,marginBottom:5}}>{settings.clubName}</div>
-              <div style={{fontFamily:'var(--fd)',fontSize:'clamp(22px,3.2vw,36px)',fontWeight:900,color:'#fff',letterSpacing:'-.5px',lineHeight:1,textShadow:`0 0 30px ${pc}66`}}>{settings.tournamentName}</div>
+              <div style={{fontFamily:'var(--fb)',fontSize:11,letterSpacing:5,textTransform:'uppercase',color:pc,fontWeight:700,marginBottom:4,opacity:.9}}>{settings.clubName}</div>
+              <div style={{fontFamily:'var(--fd)',fontSize:'clamp(28px,3.8vw,48px)',fontWeight:900,color:'#fff',letterSpacing:'-.5px',lineHeight:1,
+                textShadow:`0 0 40px ${pc}, 0 2px 4px rgba(0,0,0,.5)`,
+                WebkitTextStroke:'0.5px rgba(255,255,255,.15)'}}>{settings.tournamentName}</div>
             </div>
           </div>
-          <div style={{textAlign:'right'}}>
-            <div style={{fontFamily:'var(--fd)',fontSize:'clamp(32px,5vw,52px)',fontWeight:900,letterSpacing:'-2px',fontVariantNumeric:'tabular-nums',color:'#fff',lineHeight:1,textShadow:`0 0 20px ${pc}88`}}>{time.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'})}</div>
-            <div style={{fontFamily:'var(--fb)',fontSize:13,opacity:.55,marginTop:5,color:tc,letterSpacing:.5}}>{time.toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'})}</div>
+          <div style={{display:'flex',alignItems:'center',gap:20}}>
+            {weather&&<div style={{textAlign:'center',padding:'0 20px',borderLeft:`1px solid rgba(255,255,255,.1)`,borderRight:`1px solid rgba(255,255,255,.1)`}}>
+              <div style={{fontSize:'clamp(26px,3.8vw,44px)',lineHeight:1}}>{weather.emoji}</div>
+              <div style={{fontFamily:'var(--fd)',fontWeight:900,fontSize:'clamp(18px,2.5vw,30px)',color:'#fff',lineHeight:1.1}}>{weather.temp}°</div>
+              <div style={{fontFamily:'var(--fb)',fontSize:'clamp(9px,1vw,12px)',color:tc,opacity:.65,marginTop:2}}>{weather.desc}</div>
+              {settings.weatherCity&&<div style={{fontFamily:'var(--fb)',fontSize:'clamp(8px,.9vw,10px)',color:tc,opacity:.4}}>{settings.weatherCity}</div>}
+            </div>}
+            {settings.tvUrl&&<div style={{textAlign:'center'}}>
+              <img src={'https://api.qrserver.com/v1/create-qr-code/?size=90x90&data='+encodeURIComponent(settings.tvUrl)+'&bgcolor=111111&color=ffffff&margin=4'}
+                style={{width:'clamp(56px,6vw,90px)',height:'clamp(56px,6vw,90px)',borderRadius:6,opacity:.9}} alt="QR"/>
+              <div style={{fontFamily:'var(--fb)',fontSize:'clamp(7px,.8vw,10px)',color:tc,opacity:.45,marginTop:2}}>Suivez en direct</div>
+            </div>}
+            <div style={{textAlign:'right'}}>
+              <div style={{fontFamily:'var(--fd)',fontSize:'clamp(36px,5.5vw,60px)',fontWeight:900,letterSpacing:'-2px',fontVariantNumeric:'tabular-nums',
+                color:'#fff',lineHeight:1,textShadow:`0 0 30px ${ac}cc, 0 2px 8px rgba(0,0,0,.6)`}}>{time.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'})}</div>
+              <div style={{fontFamily:'var(--fb)',fontSize:13,marginTop:6,color:ac,letterSpacing:.5,fontWeight:600,opacity:.85}}>{time.toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'})}</div>
+            </div>
           </div>
         </div>
         <div className="tv-content">
@@ -1240,6 +2632,24 @@ function TVDisplay({data,comments,user,onComment,onGoogleLogin,isPublic}){
             )}
           </div>
         </div>
+        {finishedToday.length>0&&finishedToday[palmIdx%finishedToday.length]?.winner&&(()=>{
+          const m=finishedToday[palmIdx%finishedToday.length];
+          const winner=m.winner===1?m.player1:m.player2;
+          const loser=m.winner===1?m.player2:m.player1;
+          const wRank=m.winner===1?m.p1Ranking:m.p2Ranking;
+          return(
+            <div style={{background:`linear-gradient(90deg,${pc}22,rgba(0,0,0,.5),${ac}11)`,borderTop:`1px solid ${pc}44`,padding:'7px 40px',display:'flex',alignItems:'center',gap:16,minHeight:40,flexShrink:0}}>
+              <span style={{fontFamily:'var(--fb)',fontSize:'clamp(9px,1vw,11px)',letterSpacing:2,textTransform:'uppercase',color:pc,fontWeight:700,flexShrink:0}}>🏆 Palmarès</span>
+              <div style={{width:1,height:18,background:'rgba(255,255,255,.15)',flexShrink:0}}/>
+              {m.category&&<span style={{fontFamily:'var(--fb)',fontSize:'clamp(9px,1vw,12px)',color:tc,opacity:.55,flexShrink:0}}>{m.category}</span>}
+              <span style={{fontFamily:'var(--fd)',fontWeight:900,fontSize:'clamp(13px,1.6vw,20px)',color:ac,whiteSpace:'nowrap'}}>{winner}{wRank?` (${wRank})`:''}</span>
+              <span style={{fontFamily:'var(--fb)',fontSize:'clamp(10px,1.1vw,13px)',color:tc,opacity:.55,flexShrink:0}}>bat</span>
+              <span style={{fontFamily:'var(--fd)',fontWeight:600,fontSize:'clamp(12px,1.4vw,17px)',color:tc,opacity:.75,flex:1,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{loser}</span>
+              <span style={{fontFamily:'var(--fd)',fontWeight:700,fontSize:'clamp(12px,1.4vw,17px)',color:tc,opacity:.6,flexShrink:0}}>{scoreText(m)}</span>
+              {finishedToday.length>1&&<div style={{display:'flex',gap:4,flexShrink:0}}>{finishedToday.map((_,i)=><div key={i} style={{width:6,height:6,borderRadius:'50%',background:i===palmIdx%finishedToday.length?ac:'rgba(255,255,255,.2)'}}/>)}</div>}
+            </div>
+          );
+        })()}
         <div className="tv-ftr">
           {settings.sponsors?.length>0&&<><span style={{fontSize:11,letterSpacing:2,textTransform:'uppercase',opacity:.4,fontFamily:'var(--fb)',color:tc,whiteSpace:'nowrap'}}>Partenaires</span><div style={{display:'flex',gap:20,alignItems:'center',overflow:'hidden'}}>{settings.sponsors.map((sp,i)=><div key={i} style={{opacity:i===sponsorIdx?.95:.4,transition:'opacity .5s',flexShrink:0}}>{sp.logo?<img src={sp.logo} alt={sp.name} style={{height:26,objectFit:'contain'}}/>:<span style={{fontFamily:'var(--fd)',fontSize:13,fontWeight:700,color:tc}}>{sp.name}</span>}</div>)}</div></>}
           {lastCmt&&<div style={{flex:1,overflow:'hidden',fontFamily:'var(--fb)',fontSize:13,opacity:.75,color:tc,whiteSpace:'nowrap',textOverflow:'ellipsis'}}>💬 {lastCmt.text}</div>}
@@ -1254,40 +2664,420 @@ function TVDisplay({data,comments,user,onComment,onGoogleLogin,isPublic}){
 }
 
 // ── HistoryPage ──────────────────────────────────────────────────
+// ── MatchStatsModal — stats complètes d'un match ─────────────────
+function MatchStatsModal({match:m,onClose}){
+  const st=computeServiceStats(m);
+  const pt=computePointStats(m);
+  const pct=(a,b)=>b>0?Math.round(a/b*100)+'%':'—';
+  const nP=name=>{const caps=name.trim().split(' ').filter(w=>w.length>1&&w===w.toUpperCase());return caps.join(' ')||name.split(' ')[0];};
+  const dur=m.startedAt&&m.endedAt?getMatchDur(m,m.endedAt):'';
+  const Row=({label,v1,v2,bold})=>(
+    <tr style={{borderBottom:'1px solid var(--bdr-l)'}}>
+      <td style={{padding:'6px 8px',fontFamily:'var(--fb)',fontSize:13,color:'var(--txt-m)'}}>{label}</td>
+      <td style={{padding:'6px 12px',textAlign:'center',fontFamily:'var(--fd)',fontWeight:bold?700:500,fontSize:14,color:bold?'var(--clay)':'var(--txt)'}}>{v1}</td>
+      <td style={{padding:'6px 12px',textAlign:'center',fontFamily:'var(--fd)',fontWeight:bold?700:500,fontSize:14,color:bold?'var(--clay)':'var(--txt)'}}>{v2}</td>
+    </tr>
+  );
+  const Sep=({label})=>(<tr><td colSpan={3} style={{padding:'8px 8px 4px',fontFamily:'var(--fb)',fontSize:11,color:'var(--txt-l)',textTransform:'uppercase',letterSpacing:1,background:'var(--sand-l)'}}>{label}</td></tr>);
+  return(
+    <div className="overlay" onClick={onClose}>
+      <div className="modal" style={{maxWidth:560,maxHeight:'85vh',overflowY:'auto'}} onClick={e=>e.stopPropagation()}>
+        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:12}}>
+          <div>
+            <h2 style={{fontFamily:'var(--fd)',fontSize:18}}>📊 Stats du match</h2>
+            <div style={{fontFamily:'var(--fb)',fontSize:13,color:'var(--txt-m)',marginTop:2}}>{m.category}{m.round?' · '+m.round:''}{dur?' · ⏱ '+dur:''}</div>
+          </div>
+          <button className="btn btn-sm" onClick={onClose}>✕</button>
+        </div>
+        <table style={{width:'100%',borderCollapse:'collapse'}}>
+          <thead>
+            <tr style={{background:'var(--clay)',color:'#fff'}}>
+              <th style={{padding:'8px',textAlign:'left',fontFamily:'var(--fb)',fontSize:12,width:'45%'}}></th>
+              <th style={{padding:'8px',textAlign:'center',fontFamily:'var(--fd)',fontWeight:700,fontSize:13}}>{nP(m.player1)}</th>
+              <th style={{padding:'8px',textAlign:'center',fontFamily:'var(--fd)',fontWeight:700,fontSize:13}}>{nP(m.player2)}</th>
+            </tr>
+          </thead>
+          <tbody>
+            <Row label="Score" v1={m.sets.map(s=>s[0]).join('-')} v2={m.sets.map(s=>s[1]).join('-')}/>
+            {st&&<>
+              <Sep label="Service (jeux)"/>
+              <Row label="Jeux service gagnés" v1={st[0].won} v2={st[1].won} bold/>
+              <Row label="Jeux service perdus" v1={st[0].lost} v2={st[1].lost}/>
+              <Row label="% jeux service" v1={pct(st[0].won,st[0].won+st[0].lost)} v2={pct(st[1].won,st[1].won+st[1].lost)}/>
+              <Row label="Breaks gagnés" v1={st[1].lost} v2={st[0].lost} bold/>
+            </>}
+            {pt&&<>
+              <Sep label="Points"/>
+              <Row label="Total points" v1={pt.p1.totalPts} v2={pt.p2.totalPts}/>
+              <Row label="Points gagnés" v1={pt.p1.totalWon} v2={pt.p2.totalWon} bold/>
+              <Row label="% points" v1={pct(pt.p1.totalWon,pt.p1.totalPts)} v2={pct(pt.p2.totalWon,pt.p2.totalPts)}/>
+              <Sep label="Service (points)"/>
+              <Row label="% pts sur service" v1={pct(pt.p1.serveWon,pt.p1.servePts)} v2={pct(pt.p2.serveWon,pt.p2.servePts)}/>
+              {(pt.p1.firstTotal+pt.p2.firstTotal>0)&&<>
+                <Row label="1ère balle entrée" v1={pt.p1.firstTotal?pt.p1.firstIn+'/'+pt.p1.firstTotal:'—'} v2={pt.p2.firstTotal?pt.p2.firstIn+'/'+pt.p2.firstTotal:'—'}/>
+                <Row label="% pts sur 1ère" v1={pct(pt.p1.firstWon,pt.p1.firstIn)} v2={pct(pt.p2.firstWon,pt.p2.firstIn)}/>
+                <Row label="2ème balle entrée" v1={pt.p1.secondTotal?pt.p1.secondIn+'/'+pt.p1.secondTotal:'—'} v2={pt.p2.secondTotal?pt.p2.secondIn+'/'+pt.p2.secondTotal:'—'}/>
+                <Row label="% pts sur 2ème" v1={pct(pt.p1.secondWon,pt.p1.secondIn)} v2={pct(pt.p2.secondWon,pt.p2.secondIn)}/>
+              </>}
+              {(pt.p1.aces+pt.p2.aces+pt.p1.dfs+pt.p2.dfs>0)&&<>
+                <Row label="Aces" v1={pt.p1.aces} v2={pt.p2.aces} bold/>
+                <Row label="Double fautes" v1={pt.p1.dfs} v2={pt.p2.dfs}/>
+              </>}
+              <Sep label="Retour"/>
+              <Row label="% pts en retour" v1={pct(pt.p1.returnWon,pt.p1.returnPts)} v2={pct(pt.p2.returnWon,pt.p2.returnPts)}/>
+              {(pt.p1.winners+pt.p2.winners+pt.p1.errors+pt.p2.errors>0)&&<>
+                <Sep label="Coups"/>
+                <Row label="Pts gagnants" v1={pt.p1.winners} v2={pt.p2.winners} bold/>
+                <Row label="Fautes directes" v1={pt.p1.errors} v2={pt.p2.errors}/>
+              </>}
+              <Sep label="Break points"/>
+              <Row label="BP convertis" v1={pt.p1.bpConv+'/'+pt.p1.bpOpp} v2={pt.p2.bpConv+'/'+pt.p2.bpOpp} bold/>
+              <Row label="BP sauvées" v1={pt.p1.bpSaved+'/'+pt.p1.bpFaced} v2={pt.p2.bpSaved+'/'+pt.p2.bpFaced}/>
+              <Row label="% BP convertis" v1={pct(pt.p1.bpConv,pt.p1.bpOpp)} v2={pct(pt.p2.bpConv,pt.p2.bpOpp)}/>
+              <Row label="% BP sauvées" v1={pct(pt.p1.bpSaved,pt.p1.bpFaced)} v2={pct(pt.p2.bpSaved,pt.p2.bpFaced)}/>
+            </>}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+// ── StatsTab ─────────────────────────────────────────────────────
+// ── StatsTab ─────────────────────────────────────────────────────
+function StatsTab({matches,settings}){
+  const done=matches.filter(m=>m.status==='finished'&&m.winner);
+  const [selPlayer,setSelPlayer]=useState('');
+  const [selStats,setSelStats]=useState(null);
+
+  const allPlayers=useMemo(()=>{
+    const names=new Set();
+    matches.forEach(m=>{
+      if(m.status==='finished'||m.status==='live'||m.status==='paused'){
+        m.player1.split(' / ').forEach(p=>names.add(p.trim()));
+        m.player2.split(' / ').forEach(p=>names.add(p.trim()));
+      }
+    });
+    return [...names].sort((a,b)=>a.localeCompare(b,'fr'));
+  },[matches]);
+
+  const durMs=m=>m.startedAt&&m.endedAt?m.endedAt-m.startedAt-(m.totalPausedMs||0):0;
+  const nP=name=>name.split(' / ').map(p=>{const words=p.trim().split(' ');const caps=words.filter(w=>w.length>1&&w===w.toUpperCase());return caps.join(' ')||words[0];}).join(' / ');
+  const getWinner=m=>m.winner===1?m.player1:m.player2;
+  const getLoser=m=>m.winner===1?m.player2:m.player1;
+  const getWRank=m=>m.winner===1?m.p1Ranking:m.p2Ranking;
+  const getLRank=m=>m.winner===1?m.p2Ranking:m.p1Ranking;
+
+  if(done.length===0&&!selPlayer)return(
+    <div style={{padding:24}}><div className="card" style={{textAlign:'center',padding:48,color:'var(--txt-m)'}}>
+      <div style={{fontSize:40,marginBottom:12}}>📊</div>
+      <h3>Aucun match terminé pour l'instant</h3>
+    </div></div>
+  );
+
+  const cats=[...new Set(done.map(m=>m.category||'Divers'))].sort();
+  const longest=done.length?done.reduce((a,b)=>durMs(a)>durMs(b)?a:b):null;
+  const fastest=done.filter(m=>durMs(m)>60000).length?done.filter(m=>durMs(m)>60000).reduce((a,b)=>durMs(a)<durMs(b)?a:b):null;
+  const mostGames=done.length?done.reduce((a,b)=>a.sets.flat().reduce((x,y)=>x+y,0)>b.sets.flat().reduce((x,y)=>x+y,0)?a:b):null;
+  const wins={};done.forEach(m=>{const w=getWinner(m);wins[w]=(wins[w]||0)+1;});
+  const topWins=Object.entries(wins).sort((a,b)=>b[1]-a[1]).slice(0,5);
+  const games={};done.forEach(m=>{const p1g=m.sets.reduce((a,s)=>a+s[0],0),p2g=m.sets.reduce((a,s)=>a+s[1],0);games[m.player1]=(games[m.player1]||0)+p1g;games[m.player2]=(games[m.player2]||0)+p2g;});
+  const topGames=Object.entries(games).sort((a,b)=>b[1]-a[1]).slice(0,5);
+  const catStats=cats.map(cat=>{const ms=done.filter(m=>(m.category||'Divers')===cat);const long=ms.reduce((a,b)=>durMs(a)>durMs(b)?a:b);const fast=ms.filter(m=>durMs(m)>60000).length?ms.filter(m=>durMs(m)>60000).reduce((a,b)=>durMs(a)<durMs(b)?a:b):null;return{cat,count:ms.length,long,fast};});
+
+  const StatCard=({icon,label,value,sub})=>(<div className="card" style={{flex:1,minWidth:200}}><div style={{fontSize:28,marginBottom:6}}>{icon}</div><div style={{fontFamily:'var(--fb)',fontSize:12,color:'var(--txt-l)',textTransform:'uppercase',letterSpacing:1,marginBottom:4}}>{label}</div><div style={{fontFamily:'var(--fd)',fontWeight:700,fontSize:14,color:'var(--txt)',lineHeight:1.3}}>{value}</div>{sub&&<div style={{fontFamily:'var(--fb)',fontSize:12,color:'var(--txt-m)',marginTop:4}}>{sub}</div>}</div>);
+  const MatchLine=({m,label})=>(<div style={{display:'flex',alignItems:'center',gap:8,padding:'6px 0',borderBottom:'1px solid var(--bdr-l)'}}><span style={{fontSize:11,color:'var(--txt-l)',fontFamily:'var(--fb)',minWidth:64,flexShrink:0}}>{label}</span><div style={{flex:1,fontSize:13,fontFamily:'var(--fd)'}}><span style={{fontWeight:700,color:'var(--clay)'}}>{nP(getWinner(m))}</span>{getWRank(m)&&<span style={{fontSize:11,color:'var(--txt-l)',marginLeft:4}}>{getWRank(m)}</span>}<span style={{fontFamily:'var(--fb)',fontSize:12,color:'var(--txt-l)',margin:'0 6px'}}>bat</span><span>{nP(getLoser(m))}</span>{getLRank(m)&&<span style={{fontSize:11,color:'var(--txt-l)',marginLeft:4}}>{getLRank(m)}</span>}<span style={{color:'var(--txt-l)',marginLeft:6,fontSize:12}}>{scoreText(m)}</span></div>{durMs(m)>0&&<span style={{fontFamily:'var(--fb)',fontSize:12,color:'var(--clay)',fontWeight:600,flexShrink:0}}>⏱ {fmtDur(durMs(m))}</span>}</div>);
+
+  return(
+    <div style={{padding:24,maxWidth:920,margin:'0 auto'}}>
+      <h2 style={{marginBottom:20,fontFamily:'var(--fd)'}}>📊 Statistiques du tournoi</h2>
+
+      {/* Parcours joueur */}
+      <div className="card mb4">
+        <h3 style={{marginBottom:12,fontFamily:'var(--fd)',fontSize:15}}>🔍 Parcours d'un joueur</h3>
+        <div style={{position:'relative'}}>
+          <input className="inp" placeholder="Rechercher un joueur..." value={selPlayer}
+            onChange={e=>setSelPlayer(e.target.value)}
+            style={{paddingRight:selPlayer?36:12}}/>
+          {selPlayer&&<button onClick={()=>setSelPlayer('')} style={{position:'absolute',right:8,top:'50%',transform:'translateY(-50%)',background:'none',border:'none',cursor:'pointer',fontSize:16,color:'var(--txt-l)',lineHeight:1}}>✕</button>}
+        </div>
+        {selPlayer.trim().length>0&&(()=>{
+          const q=selPlayer.trim().toLowerCase();
+          const filtered=allPlayers.filter(p=>p.toLowerCase().includes(q));
+          if(!filtered.length)return <p style={{color:'var(--txt-m)',fontSize:13,marginTop:8}}>Aucun joueur trouvé.</p>;
+          // Si correspondance exacte → afficher le parcours
+          const exact=filtered.length===1?filtered[0]:allPlayers.find(p=>p.toLowerCase()===q);
+          if(exact){
+            const inMatch=m=>m.player1.split(' / ').map(p=>p.trim()).includes(exact)||m.player2.split(' / ').map(p=>p.trim()).includes(exact);
+            const isP1=m=>m.player1.split(' / ').map(p=>p.trim()).includes(exact);
+            const pms=matches.filter(m=>inMatch(m)&&(m.status==='finished'||m.status==='live'||m.status==='paused'))
+              .sort((a,b)=>(a.date||'').localeCompare(b.date||'')||timeToMin(a.scheduledTime)-timeToMin(b.scheduledTime));
+            const pw=pms.filter(m=>m.status==='finished'&&((isP1(m)&&m.winner===1)||(!isP1(m)&&m.winner===2))).length;
+            const pl=pms.filter(m=>m.status==='finished'&&((isP1(m)&&m.winner===2)||(!isP1(m)&&m.winner===1))).length;
+            const info=(settings?.players||[]).find(p=>p.name===exact)||matches.reduce((found,m)=>{
+              if(found)return found;
+              if(m.player1.split(' / ').map(p=>p.trim()).includes(exact))return{ranking:m.p1Ranking,club:m.p1Club};
+              if(m.player2.split(' / ').map(p=>p.trim()).includes(exact))return{ranking:m.p2Ranking,club:m.p2Club};
+              return null;
+            },null);
+            if(!pms.length)return <p style={{color:'var(--txt-m)',fontSize:13,marginTop:8}}>Aucun match trouvé pour <strong>{exact}</strong>.</p>;
+            return(
+              <div style={{marginTop:16}}>
+                <div style={{display:'flex',alignItems:'center',gap:16,padding:'12px 0',borderBottom:'2px solid var(--clay)',marginBottom:12}}>
+                  <div style={{width:48,height:48,borderRadius:'50%',background:'var(--clay)',display:'flex',alignItems:'center',justifyContent:'center',color:'#fff',fontFamily:'var(--fd)',fontWeight:900,fontSize:22,flexShrink:0}}>
+                    {(exact.trim().split(' ').find(w=>w===w.toUpperCase()&&w.length>1)||exact)[0]}
+                  </div>
+                  <div style={{flex:1}}>
+                    <div style={{fontFamily:'var(--fd)',fontWeight:900,fontSize:18}}>{exact}</div>
+                    <div style={{fontFamily:'var(--fb)',fontSize:13,color:'var(--txt-m)',marginTop:2,display:'flex',gap:8}}>
+                      {info?.ranking&&<span style={{background:'var(--sand)',border:'1px solid var(--bdr)',borderRadius:4,padding:'1px 8px'}}>{info.ranking}</span>}
+                      {info?.club&&<span style={{opacity:.7}}>{info.club}</span>}
+                    </div>
+                  </div>
+                  <div style={{display:'flex',gap:20,textAlign:'center'}}>
+                    <div><div style={{fontFamily:'var(--fd)',fontWeight:900,fontSize:28,color:'var(--green)'}}>{pw}</div><div style={{fontFamily:'var(--fb)',fontSize:11,color:'var(--txt-l)'}}>Victoires</div></div>
+                    <div><div style={{fontFamily:'var(--fd)',fontWeight:900,fontSize:28,color:'var(--red)'}}>{pl}</div><div style={{fontFamily:'var(--fb)',fontSize:11,color:'var(--txt-l)'}}>Défaites</div></div>
+                    <div><div style={{fontFamily:'var(--fd)',fontWeight:900,fontSize:28,color:'var(--clay)'}}>{pms.length}</div><div style={{fontFamily:'var(--fb)',fontSize:11,color:'var(--txt-l)'}}>Matchs</div></div>
+                  </div>
+                </div>
+                {pms.map(m=>{
+                  const myIsP1=isP1(m);
+                  const myWin=m.status==='finished'&&((myIsP1&&m.winner===1)||(!myIsP1&&m.winner===2));
+                  const opponent=myIsP1?m.player2:m.player1;
+                  const oppRank=myIsP1?m.p2Ranking:m.p1Ranking;
+                  const isLive=m.status==='live'||m.status==='paused';
+                  return(
+                    <div key={m.id} style={{display:'flex',alignItems:'center',gap:10,padding:'8px 0',borderBottom:'1px solid var(--bdr-l)'}}>
+                      <span className={`badge ${myWin?'b-done':isLive?'b-live':m.status==='finished'?'b-red':'b-pend'}`} style={{minWidth:28,textAlign:'center',fontSize:11,fontWeight:700}}>
+                        {isLive?'▶':myWin?'V':'D'}
+                      </span>
+                      <div style={{flex:1}}>
+                        <div style={{fontFamily:'var(--fd)',fontWeight:600,fontSize:13,display:'flex',alignItems:'center',gap:6,flexWrap:'wrap'}}>
+                          <span>vs {nP(opponent)}</span>
+                          {oppRank&&<span style={{fontSize:11,color:'var(--txt-l)',fontFamily:'var(--fb)'}}>{oppRank}</span>}
+                          {m.wo&&<span style={{fontSize:10,color:'#b87000',fontFamily:'var(--fb)',background:'rgba(184,112,0,.1)',padding:'1px 6px',borderRadius:3}}>W.O.</span>}
+                          {m.abandonBy&&<span style={{fontSize:10,color:'var(--red)',fontFamily:'var(--fb)',background:'rgba(200,40,40,.1)',padding:'1px 6px',borderRadius:3}}>Abandon</span>}
+                        </div>
+                        <div style={{fontFamily:'var(--fb)',fontSize:11,color:'var(--txt-l)',marginTop:1}}>
+                          {m.category&&<span>{m.category}</span>}{m.round&&<span> · {m.round}</span>}{m.date&&<span> · {m.date}</span>}
+                        </div>
+                      </div>
+                      <span style={{fontFamily:'var(--fd)',fontWeight:600,fontSize:13,color:'var(--txt-m)'}}>{scoreText(m)}</span>
+                      {durMs(m)>0&&<span style={{fontFamily:'var(--fb)',fontSize:11,color:'var(--txt-l)',flexShrink:0}}>⏱ {fmtDur(durMs(m))}</span>}
+                      {(computeServiceStats(m)||computePointStats(m))&&<button className="btn btn-sm" style={{fontSize:11,padding:'3px 8px',marginLeft:4}} onClick={()=>setSelStats(m)}>📊</button>}
+                    </div>
+                  );
+                })}
+              </div>
+            );
+          }
+          // Plusieurs résultats → liste cliquable
+          return(
+            <div style={{marginTop:8,border:'1px solid var(--bdr-l)',borderRadius:'var(--r)',overflow:'hidden'}}>
+              {filtered.slice(0,10).map(p=>(
+                <div key={p} onClick={()=>setSelPlayer(p)}
+                  style={{padding:'10px 14px',cursor:'pointer',borderBottom:'1px solid var(--bdr-l)',fontFamily:'var(--fd)',fontWeight:600,fontSize:14,display:'flex',alignItems:'center',gap:8}}
+                  onMouseEnter={e=>e.currentTarget.style.background='var(--sand-l)'}
+                  onMouseLeave={e=>e.currentTarget.style.background=''}>
+                  <span style={{flex:1}}>{p}</span>
+                  <span style={{fontSize:12,color:'var(--txt-l)',fontFamily:'var(--fb)'}}>→</span>
+                </div>
+              ))}
+              {filtered.length>10&&<div style={{padding:'8px 14px',fontSize:12,color:'var(--txt-l)',fontFamily:'var(--fb)',textAlign:'center'}}>{filtered.length-10} autres résultats — affinez la recherche</div>}
+            </div>
+          );
+        })()}
+      </div>
+
+
+      {/* Records globaux */}
+      {done.length>0&&(()=>{
+        // ── Records match ────────────────────────────────────────
+        const fewestGames=done.reduce((a,b)=>a.sets.flat().reduce((x,y)=>x+y,0)<b.sets.flat().reduce((x,y)=>x+y,0)?a:b);
+        const mostTBs=done.reduce((a,b)=>{const ta=a.sets.filter(s=>s[0]===7||s[1]===7||s[0]===10||s[1]===10).length;const tb=b.sets.filter(s=>s[0]===7||s[1]===7||s[0]===10||s[1]===10).length;return ta>tb?a:b;});
+        const biggestComebackMatch=done.find(m=>m.history?.some&&m.sets.length>1&&((m.winner===1&&m.sets[0][0]<m.sets[0][1])||(m.winner===2&&m.sets[0][1]<m.sets[0][0])));
+
+        // ── Records joueurs ──────────────────────────────────────
+        const matchCount={};done.forEach(m=>{[m.player1,m.player2].forEach(p=>{matchCount[p]=(matchCount[p]||0)+1;});});
+        const topMatches=Object.entries(matchCount).sort((a,b)=>b[1]-a[1]).slice(0,5);
+
+        const timeOnCourt={};done.filter(m=>durMs(m)>0).forEach(m=>{[m.player1,m.player2].forEach(p=>{timeOnCourt[p]=(timeOnCourt[p]||0)+durMs(m);});});
+        const topTime=Object.entries(timeOnCourt).sort((a,b)=>b[1]-a[1]).slice(0,3);
+
+        // Ratio V/D (min 3 matchs)
+        const ratios={};done.forEach(m=>{if(!ratios[m.player1])ratios[m.player1]={w:0,l:0};if(!ratios[m.player2])ratios[m.player2]={w:0,l:0};const w=m.winner===1?m.player1:m.player2,l=m.winner===1?m.player2:m.player1;ratios[w].w++;ratios[l].l++;});
+        const topRatio=Object.entries(ratios).filter(([,r])=>r.w+r.l>=3).map(([n,r])=>[n,r,Math.round(r.w/(r.w+r.l)*100)]).sort((a,b)=>b[2]-a[2]).slice(0,3);
+
+        // Victoires consécutives
+        const playerList=[...new Set(done.flatMap(m=>[m.player1,m.player2]))];
+        const topStreak=playerList.map(p=>{
+          const pms=done.filter(m=>m.player1===p||m.player2===p).sort((a,b)=>(a.date||'').localeCompare(b.date||'')||timeToMin(a.scheduledTime)-timeToMin(b.scheduledTime));
+          let max=0,cur=0;
+          pms.forEach(m=>{const won=(m.winner===1&&m.player1===p)||(m.winner===2&&m.player2===p);if(won)cur++;else cur=0;max=Math.max(max,cur);});
+          return[p,max];
+        }).filter(([,n])=>n>=2).sort((a,b)=>b[1]-a[1]).slice(0,3);
+
+        // ── Records stats points ─────────────────────────────────
+        const ptMatches=done.filter(m=>m.pointLog?.length>5);
+        const bestServe=ptMatches.flatMap(m=>{const pt=computePointStats(m);if(!pt)return[];return[[m.player1,pt.p1,m],[m.player2,pt.p2,m]];}).filter(([,p])=>p.servePts>=8).map(([n,p,m])=>[n,Math.round(p.serveWon/p.servePts*100),m]).sort((a,b)=>b[1]-a[1])[0];
+        const bestReturn=ptMatches.flatMap(m=>{const pt=computePointStats(m);if(!pt)return[];return[[m.player1,pt.p1,m],[m.player2,pt.p2,m]];}).filter(([,p])=>p.returnPts>=8).map(([n,p,m])=>[n,Math.round(p.returnWon/p.returnPts*100),m]).sort((a,b)=>b[1]-a[1])[0];
+        const mostAces=ptMatches.flatMap(m=>{const pt=computePointStats(m);if(!pt)return[];return[[m.player1,pt.p1.aces,m],[m.player2,pt.p2.aces,m]];}).filter(([,n])=>n>0).sort((a,b)=>b[1]-a[1])[0];
+        const mostDF=ptMatches.flatMap(m=>{const pt=computePointStats(m);if(!pt)return[];return[[m.player1,pt.p1.dfs,m],[m.player2,pt.p2.dfs,m]];}).filter(([,n])=>n>0).sort((a,b)=>b[1]-a[1])[0];
+        const bestBP=ptMatches.flatMap(m=>{const pt=computePointStats(m);if(!pt)return[];return[[m.player1,pt.p1,m],[m.player2,pt.p2,m]];}).filter(([,p])=>p.bpOpp>=2).map(([n,p,m])=>[n,Math.round(p.bpConv/p.bpOpp*100),p.bpConv,p.bpOpp,m]).sort((a,b)=>b[1]-a[1])[0];
+
+        const Rank=({data,label,icon,fmt})=>data.length>0&&(
+          <div className="card"><h4 style={{marginBottom:12,fontFamily:'var(--fd)',fontSize:14}}>{icon} {label}</h4>
+            {data.map(([name,val],i)=>(<div key={i} style={{display:'flex',alignItems:'center',gap:8,padding:'5px 0',borderBottom:'1px solid var(--bdr-l)'}}>
+              <span style={{fontSize:16,minWidth:24}}>{['🥇','🥈','🥉'][i]||'•'}</span>
+              <span style={{flex:1,fontFamily:'var(--fd)',fontWeight:600,fontSize:13}}>{nP(name)}</span>
+              <span style={{fontFamily:'var(--fd)',fontWeight:900,fontSize:16,color:'var(--clay)'}}>{fmt?fmt(val):val}</span>
+            </div>))}
+          </div>
+        );
+
+        return(<>
+          <h3 style={{marginBottom:12,fontFamily:'var(--fd)',fontSize:15,color:'var(--txt-m)',textTransform:'uppercase',letterSpacing:1}}>Records de match</h3>
+          <div style={{display:'flex',gap:12,flexWrap:'wrap',marginBottom:24}}>
+            {longest&&<StatCard icon="⏱" label="Match le plus long" value={nP(getWinner(longest))+' bat '+nP(getLoser(longest))} sub={scoreText(longest)+' — '+fmtDur(durMs(longest))+(longest.category?' · '+longest.category:'')}/>}
+            {fastest&&<StatCard icon="⚡" label="Match le plus rapide" value={nP(getWinner(fastest))+' bat '+nP(getLoser(fastest))} sub={scoreText(fastest)+' — '+fmtDur(durMs(fastest))+(fastest.category?' · '+fastest.category:'')}/>}
+            {mostGames&&<StatCard icon="🎾" label="Plus de jeux" value={nP(getWinner(mostGames))+' bat '+nP(getLoser(mostGames))} sub={scoreText(mostGames)+' — '+mostGames.sets.flat().reduce((a,b)=>a+b,0)+' jeux'+(mostGames.category?' · '+mostGames.category:'')}/>}
+            <StatCard icon="🏃" label="Moins de jeux" value={nP(getWinner(fewestGames))+' bat '+nP(getLoser(fewestGames))} sub={scoreText(fewestGames)+' — '+fewestGames.sets.flat().reduce((a,b)=>a+b,0)+' jeux'+(fewestGames.category?' · '+fewestGames.category:'')}/>
+            {mostTBs.sets.filter(s=>s[0]===7||s[1]===7||s[0]===10||s[1]===10).length>0&&<StatCard icon="⚡" label="Plus de tie-breaks" value={nP(getWinner(mostTBs))+' bat '+nP(getLoser(mostTBs))} sub={scoreText(mostTBs)+' — '+mostTBs.sets.filter(s=>s[0]===7||s[1]===7||s[0]===10||s[1]===10).length+' TB'+(mostTBs.category?' · '+mostTBs.category:'')}/>}
+            {biggestComebackMatch&&<StatCard icon="🔄" label="Remontée" value={nP(getWinner(biggestComebackMatch))+' bat '+nP(getLoser(biggestComebackMatch))} sub={scoreText(biggestComebackMatch)+(biggestComebackMatch.category?' · '+biggestComebackMatch.category:'')}/>}
+          </div>
+
+          <h3 style={{marginBottom:12,fontFamily:'var(--fd)',fontSize:15,color:'var(--txt-m)',textTransform:'uppercase',letterSpacing:1}}>Records joueurs</h3>
+          <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(220px,1fr))',gap:16,marginBottom:24}}>
+            <Rank data={topWins} label="Plus de victoires" icon="🏆"/>
+            <Rank data={topMatches} label="Plus de matchs joués" icon="🎾"/>
+            {topStreak.length>0&&<Rank data={topStreak} label="Série de victoires" icon="🔥" fmt={n=>n+' consécutives'}/>}
+            {topRatio.length>0&&<Rank data={topRatio.map(([n,,r])=>[n,r])} label="Meilleur ratio V/D" icon="📈" fmt={n=>n+'%'}/>}
+            {topTime.length>0&&<Rank data={topTime.map(([n,t])=>[n,t])} label="Temps sur le court" icon="⏱" fmt={t=>fmtDur(t)}/>}
+            <Rank data={topGames} label="Plus de jeux gagnés" icon="🎯"/>
+          </div>
+
+          {ptMatches.length>0&&<>
+            <h3 style={{marginBottom:12,fontFamily:'var(--fd)',fontSize:15,color:'var(--txt-m)',textTransform:'uppercase',letterSpacing:1}}>Records stats (mode point)</h3>
+            <div style={{display:'flex',gap:12,flexWrap:'wrap',marginBottom:24}}>
+              {bestServe&&<StatCard icon="💪" label="Meilleur % service" value={nP(bestServe[0])+' — '+bestServe[1]+'%'} sub={scoreText(bestServe[2])+(bestServe[2].category?' · '+bestServe[2].category:'')}/>}
+              {bestReturn&&<StatCard icon="↩" label="Meilleur % retour" value={nP(bestReturn[0])+' — '+bestReturn[1]+'%'} sub={scoreText(bestReturn[2])+(bestReturn[2].category?' · '+bestReturn[2].category:'')}/>}
+              {mostAces&&<StatCard icon="⚡" label="Plus d'aces" value={nP(mostAces[0])+' — '+mostAces[1]+' ace'+(mostAces[1]>1?'s':'')} sub={scoreText(mostAces[2])+(mostAces[2].category?' · '+mostAces[2].category:'')}/>}
+              {mostDF&&<StatCard icon="💥" label="Plus de double fautes" value={nP(mostDF[0])+' — '+mostDF[1]+' DF'} sub={scoreText(mostDF[2])+(mostDF[2].category?' · '+mostDF[2].category:'')}/>}
+              {bestBP&&<StatCard icon="🔴" label="Meilleur % BP convertis" value={nP(bestBP[0])+' — '+bestBP[2]+'/'+bestBP[3]+' ('+bestBP[1]+'%)'} sub={scoreText(bestBP[4])+(bestBP[4].category?' · '+bestBP[4].category:'')}/>}
+            </div>
+          </>}
+
+          <h3 style={{marginBottom:12,fontFamily:'var(--fd)',fontSize:15,color:'var(--txt-m)',textTransform:'uppercase',letterSpacing:1}}>Par tableau</h3>
+          {catStats.map(({cat,count,long,fast})=>(
+            <div key={cat} className="card mb3">
+              <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:10}}>
+                <h4 style={{fontFamily:'var(--fd)',fontSize:15}}>{cat}</h4>
+                <span style={{fontFamily:'var(--fb)',fontSize:12,color:'var(--txt-l)'}}>{count} match{count>1?'s':''}</span>
+              </div>
+              <MatchLine m={long} label="⏱ + long"/>
+              {fast&&fast.id!==long.id&&<MatchLine m={fast} label="⚡ + rapide"/>}
+            </div>
+          ))}
+        </>);
+      })()}
+      {selStats&&<MatchStatsModal match={selStats} onClose={()=>setSelStats(null)}/>}
+    </div>
+  );
+}
+
 function HistoryPage({data,comments,user,onComment,onGoogleLogin}){
   const {matches,settings}=data;
   const [sel,setSel]=useState(todayStr());
   const [fbTxt,setFbTxt]=useState('');
+  const [statsMatch,setStatsMatch]=useState(null);
   const allDates=useMemo(()=>{const ds=[...new Set(matches.map(m=>m.date).filter(Boolean))].sort().reverse();if(!ds.includes(todayStr()))ds.unshift(todayStr());return ds;},[matches]);
   const dayM=useMemo(()=>matches.filter(m=>m.date===sel).sort((a,b)=>timeToMin(a.scheduledTime)-timeToMin(b.scheduledTime)),[matches,sel]);
   const dayCmts=useMemo(()=>(comments||[]).filter(c=>c.date===sel),[comments,sel]);
+  // Convertit en caractères gras Unicode (fonctionne sur Facebook)
+  const toBold=s=>s.replace(/[A-Za-zÀ-ÿ0-9]/g,c=>{
+    const code=c.charCodeAt(0);
+    if(code>=65&&code<=90)return String.fromCodePoint(code+0x1D400-0x41);
+    if(code>=97&&code<=122)return String.fromCodePoint(code+0x1D41A-0x61);
+    if(code>=48&&code<=57)return String.fromCodePoint(code+0x1D7CE-0x30);
+    return c;
+  });
+
   const genFB=()=>{
     const lines=[`🎾 Résultats – ${fmtDateFR(sel)}`,`${settings.clubName} · ${settings.tournamentName}`,''];
     const fin=dayM.filter(m=>m.status==='finished');
     const grp={};fin.forEach(m=>{const k=m.category||'Divers';(grp[k]=grp[k]||[]).push(m);});
-    Object.entries(grp).forEach(([cat,ms])=>{lines.push(`📌 ${cat}`);ms.forEach(m=>{const sw=countWonSets(m),winner=m.winner===1?m.player1:m.player2,loser=m.winner===1?m.player2:m.player1,dur=m.startedAt&&m.endedAt?` (${fmtDur(m.endedAt-m.startedAt)})`:'';lines.push(`✅ ${winner} bat ${loser} : ${scoreText(m)}${dur}`);});lines.push('');});
+    Object.entries(grp).forEach(([cat,ms])=>{
+      lines.push(`📌 ${cat}`);
+      ms.forEach(m=>{
+        const winner=m.winner===1?m.player1:m.player2,loser=m.winner===1?m.player2:m.player1;
+        const wRank=m.winner===1?m.p1Ranking:m.p2Ranking;
+        const wClub=m.winner===1?m.p1Club:m.p2Club;
+        const lRank=m.winner===1?m.p2Ranking:m.p1Ranking;
+        const lClub=m.winner===1?m.p2Club:m.p1Club;
+        const wInfo=[wRank,wClub].filter(Boolean).join(' - ');
+        const lInfo=[lRank,lClub].filter(Boolean).join(' - ');
+        const winnerDisplay=`${toBold(winner)}${wInfo?` (${wInfo})`:''}`;
+        const loserDisplay=`${loser}${lInfo?` (${lInfo})`:''}`;
+        const dur=m.startedAt&&m.endedAt?` (${getMatchDur(m,m.endedAt)})`:'';
+        const suffix=m.wo?' [W.O.]':m.abandonBy?` [Abandon ${m.abandonBy===1?m.player1:m.player2}]`:'';
+        lines.push(`✅ ${winnerDisplay} bat ${loserDisplay} : ${scoreText(m)}${suffix}${dur}`);
+      });
+      lines.push('');
+    });
     lines.push(`#tennis #${settings.clubName.replace(/\s/g,'')} #tournoi`);
     return lines.join('\n');
   };
   return(
     <div className="hist-wrap">
-      <div className="flex ai jb mb4" style={{flexWrap:'wrap',gap:12}}><h1>Résultats & Historique</h1><button className="btn btn-p" onClick={()=>setFbTxt(genFB())}>📘 Résumé Facebook</button></div>
+      <div className="flex ai jb mb4" style={{flexWrap:'wrap',gap:12}}>
+        <h1>Résultats &amp; Historique</h1>
+        <div className="flex gap2">
+          <button className="btn" onClick={()=>{
+            const fin=data.matches.filter(m=>m.status==='finished');
+            if(!fin.length)return alert('Aucun match terminé.');
+            const cats=[...new Set(fin.map(m=>m.category||'Divers'))].sort();
+            const dur=m=>m.startedAt&&m.endedAt?fmtDur(m.endedAt-m.startedAt-(m.totalPausedMs||0)):'';
+            const rows=cats.map(cat=>{
+              const ms=fin.filter(m=>(m.category||'Divers')===cat).sort((a,b)=>timeToMin(a.scheduledTime)-timeToMin(b.scheduledTime));
+              const lines=ms.map(m=>{
+                const w=m.winner===1?m.player1:m.player2,l=m.winner===1?m.player2:m.player1;
+                const wr=m.winner===1?m.p1Ranking:m.p2Ranking,lr=m.winner===1?m.p2Ranking:m.p1Ranking;
+                return `<tr><td style="padding:6px 8px;font-weight:700;color:#c45c26">${w}${wr?` <small style="color:#666">${wr}</small>`:''}</td><td style="padding:6px 8px;color:#666;font-size:12px">bat</td><td style="padding:6px 8px">${l}${lr?` <small style="color:#666">${lr}</small>`:''}</td><td style="padding:6px 8px;font-weight:600">${scoreText(m)}</td><td style="padding:6px 8px;color:#666;font-size:12px">${m.round||''}</td><td style="padding:6px 8px;color:#666;font-size:12px">${dur(m)}</td></tr>`;
+              }).join('');
+              return `<div style="margin-bottom:24px"><h3 style="background:#c45c26;color:#fff;padding:8px 12px;margin:0 0 0 0;font-size:14px">${cat}</h3><table style="width:100%;border-collapse:collapse;font-size:13px;font-family:sans-serif"><thead><tr style="background:#f5e8d5"><th style="padding:5px 8px;text-align:left">Vainqueur</th><th></th><th style="padding:5px 8px;text-align:left">Perdant</th><th style="padding:5px 8px;text-align:left">Score</th><th style="padding:5px 8px;text-align:left">Tour</th><th style="padding:5px 8px;text-align:left">Durée</th></tr></thead><tbody>${lines}</tbody></table></div>`;
+            }).join('');
+            const html=`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Résultats ${data.settings.tournamentName}</title><style>body{font-family:sans-serif;padding:20px;color:#222}h1{color:#c45c26;border-bottom:3px solid #c45c26;padding-bottom:8px}table tr:nth-child(even){background:#fafafa}@media print{.no-print{display:none}}</style></head><body><h1>${data.settings.tournamentName}</h1><p style="color:#666;margin-bottom:20px">${data.settings.clubName} — ${new Date().toLocaleDateString('fr-FR',{weekday:'long',year:'numeric',month:'long',day:'numeric'})}</p>${rows}</body></html>`;
+            const w=window.open('','_blank');w.document.write(html);w.document.close();setTimeout(()=>w.print(),500);
+          }}>📄 Export PDF</button>
+          <button className="btn btn-p" onClick={()=>setFbTxt(genFB())}>📘 Résumé Facebook</button>
+        </div>
+      </div>
       <div style={{display:'flex',gap:8,flexWrap:'wrap',marginBottom:24}}>
         {allDates.map(d=><button key={d} onClick={()=>setSel(d)} style={{padding:'6px 14px',borderRadius:20,border:'1px solid var(--bdr)',background:d===sel?'var(--clay)':'var(--white)',color:d===sel?'#fff':'var(--txt)',fontSize:13,cursor:'pointer',transition:'all .15s'}}>{d===todayStr()?"Aujourd'hui":fmtDateFR(d).replace(/^\w+,?\s*/,'')}</button>)}
       </div>
       {dayM.length===0?<div className="card" style={{textAlign:'center',padding:40,color:'var(--txt-m)'}}><div style={{fontSize:32,marginBottom:10}}>📅</div><p>Aucun match</p></div>
       :dayM.map(m=>{
-        const sw=countWonSets(m),isDone=m.status==='finished',isLive=m.status==='live',dur=m.startedAt&&m.endedAt?fmtDur(m.endedAt-m.startedAt):'';
-        return<div key={m.id} className="card mb3" style={{borderLeft:`3px solid ${isLive?'var(--red)':isDone?'var(--green)':'var(--bdr)'}`}}>
+        const isDone=m.status==='finished',isLive=m.status==='live',isPaused=m.status==='paused';
+        const dur=m.startedAt&&m.endedAt?getMatchDur(m,m.endedAt):'';
+        const borderC=isLive?'var(--red)':isDone?'var(--green)':isPaused?'#b87000':'var(--bdr)';
+        return<div key={m.id} className="card mb3" style={{borderLeft:`3px solid ${borderC}`}}>
           <div className="flex ai gap2 mb2" style={{flexWrap:'wrap'}}>
             {m.scheduledTime&&<span style={{fontFamily:'var(--fd)',fontWeight:700,color:'var(--clay)'}}>{m.scheduledTime}</span>}
-            <span className={`badge ${isLive?'b-live':isDone?'b-done':'b-pend'}`}>{isLive?'En direct':isDone?'Terminé':'À venir'}</span>
+            <span className={`badge ${isLive?'b-live':isDone?'b-done':isPaused?'b-info':'b-pend'}`}>
+              {isLive&&<span className="dot"/>}
+              {isLive?'En direct':isDone?(m.wo?'W.O.':m.abandonBy?'Abandon':'Terminé'):isPaused?'⏸ Pause':'À venir'}
+            </span>
             {m.category&&<span style={{fontSize:13,color:'var(--txt-m)'}}>{m.category}</span>}
             {m.round&&<span style={{fontSize:12,color:'var(--txt-l)'}}>• {m.round}</span>}
             {dur&&<span className="badge b-info" style={{marginLeft:'auto'}}>⏱ {dur}</span>}
           </div>
           <ScoreDisplay match={m}/>
-          {m.winner&&<div style={{marginTop:8,padding:'6px 10px',background:'var(--green-l)',borderRadius:'var(--r)',color:'var(--green)',fontWeight:600,fontSize:14,fontFamily:'var(--fd)'}}>🏆 {m.winner===1?m.player1:m.player2}</div>}
+          {m.winner&&<div style={{marginTop:8,padding:'6px 10px',background:'var(--green-l)',borderRadius:'var(--r)',color:'var(--green)',fontWeight:600,fontSize:14,fontFamily:'var(--fd)',display:'flex',alignItems:'center',gap:8,flexWrap:'wrap'}}>
+            🏆 {m.winner===1?m.player1:m.player2}
+            {m.wo&&<span style={{fontSize:12,fontWeight:400,color:'var(--txt-m)'}}>victoire par W.O.</span>}
+            {m.abandonBy&&<span style={{fontSize:12,fontWeight:400,color:'var(--red)'}}>— abandon de {m.abandonBy===1?m.player1:m.player2}</span>}
+            {(computeServiceStats(m)||computePointStats(m))&&<button className="btn btn-sm" style={{marginLeft:'auto',fontSize:12}} onClick={()=>setStatsMatch(m)}>📊 Stats</button>}
+          </div>}
         </div>;
       })}
       <div className="sep"/>
@@ -1296,7 +3086,7 @@ function HistoryPage({data,comments,user,onComment,onGoogleLogin}){
       :<div className="flex ai gap3 mb4" style={{padding:'12px 14px',background:'var(--sand-l)',borderRadius:'var(--rl)'}}><span style={{color:'var(--txt-m)',fontSize:14}}>Connectez-vous pour commenter</span><button className="btn btn-sm btn-p" onClick={onGoogleLogin}>Se connecter avec Google</button></div>}
       {dayCmts.length===0&&<p style={{color:'var(--txt-l)',fontSize:14}}>Aucun commentaire.</p>}
       {dayCmts.map(c=><div key={c.id} className="cmt-item"><img src={c.photoURL||`https://ui-avatars.com/api/?name=${encodeURIComponent(c.displayName||'?')}&size=32`} className="cmt-avatar" alt=""/><div><div style={{fontSize:13,fontWeight:600,color:'var(--txt-m)'}}>{c.displayName||'Anonyme'}</div><div style={{fontSize:15,marginTop:2}}>{c.text}</div><div style={{fontSize:11,color:'var(--txt-l)',marginTop:2}}>{c.ts?new Date(c.ts).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}):''}</div></div></div>)}
-      {fbTxt&&<div className="overlay" onClick={()=>setFbTxt('')}><div className="modal" onClick={e=>e.stopPropagation()}><h2 className="mb3">📘 Résumé Facebook</h2><textarea readOnly value={fbTxt} style={{width:'100%',height:300,padding:10,borderRadius:'var(--r)',border:'1px solid var(--bdr)',fontFamily:'var(--fb)',fontSize:14,background:'var(--cream)',resize:'none'}}/><div className="flex je gap3" style={{marginTop:14}}><button className="btn" onClick={()=>setFbTxt('')}>Fermer</button><button className="btn btn-p" onClick={()=>navigator.clipboard.writeText(fbTxt).then(()=>alert('✅ Copié !')).catch(()=>{})}>📋 Copier</button></div></div></div>}
+      {statsMatch&&<MatchStatsModal match={statsMatch} onClose={()=>setStatsMatch(null)}/>}      {fbTxt&&<div className="overlay" onClick={()=>setFbTxt('')}><div className="modal" onClick={e=>e.stopPropagation()}><h2 className="mb3">📘 Résumé Facebook</h2><textarea readOnly value={fbTxt} style={{width:'100%',height:300,padding:10,borderRadius:'var(--r)',border:'1px solid var(--bdr)',fontFamily:'var(--fb)',fontSize:14,background:'var(--cream)',resize:'none'}}/><div className="flex je gap3" style={{marginTop:14}}><button className="btn" onClick={()=>setFbTxt('')}>Fermer</button><button className="btn btn-p" onClick={()=>navigator.clipboard.writeText(fbTxt).then(()=>alert('✅ Copié !')).catch(()=>{})}>📋 Copier</button></div></div></div>}
     </div>
   );
 }
@@ -1312,7 +3102,7 @@ function App(){
   const [tab,setTab]=useState('matches');
   const [srvModal,setSrvModal]=useState(null);
   const skipRef=useRef(false);
-  const mode=useMemo(()=>new URLSearchParams(location.search).get('v')||'admin',[]);
+  const mode=useMemo(()=>new URLSearchParams(window.location.search).get('v')||'admin',[]);
 
   useEffect(()=>{
     (async()=>{
@@ -1329,10 +3119,12 @@ function App(){
     if(!ok){setFbStatus('error');return;}
     setFbStatus('connected');
     const dRef=_db.ref('tls_data');
-    dRef.on('value',snap=>{if(skipRef.current){skipRef.current=false;return;}const v=snap.val();if(v){const d=typeof v==='string'?JSON.parse(v):v;setData(d);saveData(d);}});
+    dRef.on('value',snap=>{if(skipRef.current){skipRef.current=false;return;}const v=snap.val();if(v){const raw=typeof v==='string'?JSON.parse(v):v;const d={...DEFAULT_DATA,...raw,matches:Array.isArray(raw.matches)?raw.matches:[],settings:{...DEFAULT_SETTINGS,...(raw.settings||{})}};setData(d);saveData(d);}});
     const cRef=_db.ref('tls_comments');
     cRef.on('value',snap=>{const v=snap.val();if(v)setComments(Object.values(v).sort((a,b)=>(a.ts||0)-(b.ts||0)));});
     _auth.onAuthStateChanged(u=>setUser(u));
+    // Récupère le résultat si on revient d'un signInWithRedirect
+    _auth.getRedirectResult().then(r=>{if(r?.user)setUser(r.user);}).catch(()=>{});
     return()=>{dRef.off();cRef.off();};
   },[fbConfig]);
 
@@ -1344,7 +3136,18 @@ function App(){
 
   const googleLogin=async()=>{
     if(!_auth)return alert('Configurez Firebase d\'abord (onglet Paramètres).');
-    try{await _auth.signInWithPopup(new firebase.auth.GoogleAuthProvider());}catch(e){console.error(e);}
+    const provider=new firebase.auth.GoogleAuthProvider();
+    try{
+      await _auth.signInWithRedirect(provider);
+    }catch(e){
+      if(e.code==='auth/unauthorized-domain'){
+        alert('Domaine non autorisé.\n\nAjoutez dans Firebase Console :\nAuthentication → Domaines autorisés\n\n'+window.location.hostname);
+      }else if(e.code==='auth/configuration-not-found'||e.code==='auth/operation-not-allowed'){
+        alert('Firebase Authentication non activé.\n\nDans Firebase Console :\n1. Authentication → Commencer\n2. Activer Google\n3. Ajouter le domaine : '+window.location.hostname);
+      }else{
+        alert('Erreur : '+(e.message||e.code));
+      }
+    }
   };
   const postComment=txt=>{
     if(!_db||!user)return;
@@ -1353,21 +3156,25 @@ function App(){
 
   // Démarrer un match (depuis Matchs ou Marqueur)
   const handleStartWithServer=m=>setSrvModal(m);
-  const confirmServer=sv=>{
+  const confirmServer=(sv,court)=>{
     const m=srvModal;setSrvModal(null);
-    updM(ms=>ms.map(x=>x.id===m.id?{...x,status:'live',server:sv,firstServer:sv,startedAt:x.startedAt||Date.now()}:x));
+    updM(ms=>ms.map(x=>x.id===m.id?{...x,status:'live',server:sv,firstServer:sv,court:court||x.court,startedAt:x.startedAt||Date.now()}:x));
   };
 
   if(!ready)return<div style={{display:'flex',alignItems:'center',justifyContent:'center',height:'100vh',fontFamily:'var(--fd)',color:'var(--txt-m)',fontSize:18}}>Chargement…</div>;
 
   if(mode==='tv')return<TVDisplay data={data} comments={comments} user={user} onComment={postComment} onGoogleLogin={googleLogin} isPublic={true}/>;
-  if(mode==='history')return<><HistoryPage data={data} comments={comments} user={user} onComment={postComment} onGoogleLogin={googleLogin}/><div style={{position:'fixed',top:12,right:14,zIndex:999,display:'flex',gap:8}}><a href={location.pathname} className="btn btn-sm">← Admin</a><a href={`${location.pathname}?v=tv`} className="btn btn-sm btn-dk">📺 TV</a></div></>;
+  if(mode==='history')return<><HistoryPage data={data} comments={comments} user={user} onComment={postComment} onGoogleLogin={googleLogin}/><div style={{position:'fixed',top:12,right:14,zIndex:999,display:'flex',gap:8}}><a href={window.location.pathname} className="btn btn-sm">← Admin</a><a href={`${window.location.pathname}?v=tv`} className="btn btn-sm btn-dk">📺 TV</a></div></>;
 
-  const tvURL=`${location.href.split('?')[0]}?v=tv`;
+  const tvURL=`${window.window.window.location.href.split('?')[0]}?v=tv`;
   const liveN=data.matches.filter(m=>m.status==='live').length;
+  const themeKey=data.settings.theme||'terre_battue';
+  const theme=THEMES[themeKey]||THEMES.terre_battue;
 
   return(
     <div className="shell">
+      {/* Injection dynamique des variables CSS selon le thème */}
+      <style>{`:root{--clay:${theme.admin.clay};--clay-h:${theme.admin.clayH};--clay-pale:${theme.admin.clayPale};--sand-l:${theme.admin.clayPale};}`}</style>
       <div className="topbar">
         <div><div className="topbar-title">{data.settings.tournamentName}</div><div style={{fontSize:11,color:'var(--sand-d)',letterSpacing:'1.5px',textTransform:'uppercase'}}>{data.settings.clubName}</div></div>
         <div className="flex ai gap2 ml-a" style={{flexWrap:'wrap'}}>
@@ -1376,13 +3183,21 @@ function App(){
             :<span style={{fontSize:12,padding:'3px 10px',borderRadius:20,background:'rgba(201,162,39,.1)',color:'#c9a227',border:'1px solid rgba(201,162,39,.3)',cursor:'pointer'}} onClick={()=>setTab('settings')}>○ Sans sync</span>
           }
           {liveN>0&&<span className="badge b-live"><span className="dot"/>{liveN} en direct</span>}
-          <a href={tvURL} target="_blank" className="btn btn-dk btn-sm">📺 TV</a>
-          <a href={`${location.href.split('?')[0]}?v=history`} target="_blank" className="btn btn-sm">📊 Historique</a>
+          <a href={tvURL} target="_blank" style={{padding:'5px 14px',borderRadius:20,background:'var(--clay)',color:'#fff',fontFamily:'var(--fd)',fontWeight:700,fontSize:13,textDecoration:'none',display:'flex',alignItems:'center',gap:5,boxShadow:'0 2px 8px rgba(196,92,38,.4)'}}>📺 TV</a>
+          <a href={`${window.window.window.location.href.split('?')[0]}?v=history`} target="_blank" className="btn btn-sm">📊 Historique</a>
           <button className="btn btn-sm" onClick={()=>navigator.clipboard.writeText(tvURL).then(()=>alert('✅ Lien TV copié !')).catch(()=>{})}>📋 Lien TV</button>
+          <button className="btn btn-sm" style={{borderColor:'var(--red)',color:'var(--red)'}}
+            onClick={()=>{
+              if(!confirm('⚠️ Supprimer TOUS les matchs et repartir sur un nouvel open ?\n\nLes paramètres (nom du tournoi, couleurs, joueurs…) seront conservés.\n\nCette action est irréversible.'))return;
+              update({...data, matches:[]});
+              setTab('matches');
+            }}>
+            🗑 Nouvel open
+          </button>
         </div>
       </div>
       <div className="tabbar">
-        {[['matches','🎾 Matchs'],['scorer','📱 Marqueur'],['settings','⚙ Paramètres']].map(([k,lbl])=>(
+        {[['matches','🎾 Matchs'],['scorer','📱 Marqueur'],['stats','📊 Stats'],['settings','⚙ Paramètres']].map(([k,lbl])=>(
           <button key={k} className={`tabbtn${tab===k?' on':''}`} onClick={()=>setTab(k)}>{lbl}</button>
         ))}
       </div>
@@ -1391,18 +3206,81 @@ function App(){
           onAdd={fd=>updM(ms=>[...ms,newMatch(fd)])}
           onEdit={(id,fd)=>updM(ms=>ms.map(m=>m.id===id?{...m,...fd}:m))}
           onDelete={id=>updM(ms=>ms.filter(m=>m.id!==id))}
-          onSetStatus={(id,st)=>updM(ms=>ms.map(m=>m.id===id?{...m,status:st,startedAt:st==='live'&&!m.startedAt?Date.now():m.startedAt,endedAt:st==='finished'&&!m.endedAt?Date.now():m.endedAt}:m))}
+          onSetStatus={(id,st,extra)=>updM(ms=>ms.map(m=>m.id===id?{...m,status:st,...(extra||{}),startedAt:st==='live'&&!m.startedAt?Date.now():m.startedAt,endedAt:st==='finished'&&!m.endedAt?Date.now():m.endedAt}:m))}
+          onWO={(id,winner)=>updM(ms=>ms.map(m=>m.id===id?{...m,status:'finished',winner,wo:true,endedAt:Date.now()}:m))}
+          onPause={id=>updM(ms=>ms.map(m=>m.id===id?pauseMatch(m):m))}
+          onResume={id=>updM(ms=>ms.map(m=>m.id===id?resumeMatch(m):m))}
           onStartWithServer={handleStartWithServer}
-          onImport={ms=>updM(prev=>[...prev,...ms])}
+          onImport={ms=>updM(prev=>{
+  const norm=s=>String(s||'').toLowerCase().replace(/\s+/g,' ').trim();
+  const key=m=>{
+    const players=[norm(m.player1),norm(m.player2)].sort();
+    return[...players,norm(m.category),norm(m.round)].join('§');
+  };
+  // Dates présentes dans le fichier importé
+  const importDates=[...new Set(ms.map(m=>m.date).filter(Boolean))];
+  const result=[...prev];
+  let added=0,updated=0;
+  ms.forEach(imp=>{
+    const k=key(imp);
+    // Chercher parmi les matchs de la même date en priorité, sinon tous
+    const sameDay=result.findIndex(x=>key(x)===k&&x.date===imp.date);
+    const anyDay=result.findIndex(x=>key(x)===k);
+    const idx=sameDay>=0?sameDay:anyDay;
+    if(idx>=0){
+      const ex=result[idx];
+      result[idx]={...ex,
+        scheduledTime: imp.scheduledTime||ex.scheduledTime,
+        date:          imp.date!==undefined?imp.date:ex.date,
+        court:         imp.court||ex.court,
+        format:        ex.status==='pending'?(imp.format||ex.format):ex.format,
+        round:         ex.status==='pending'?(imp.round||ex.round):ex.round,
+        p1Club:        imp.p1Club||ex.p1Club,
+        p2Club:        imp.p2Club||ex.p2Club,
+        p1Ranking:     imp.p1Ranking||ex.p1Ranking,
+        p2Ranking:     imp.p2Ranking||ex.p2Ranking,
+        notes:         imp.notes||ex.notes,
+      };
+      updated++;
+    } else {
+      result.push(imp);
+      added++;
+    }
+  });
+  // Matchs en attente sur les dates importées mais absents du fichier → signaler
+  const removed=prev.filter(x=>
+    x.status==='pending' &&
+    importDates.includes(x.date) &&
+    !ms.find(imp=>key(imp)===key(x))
+  );
+  const msg=[];
+  if(added)   msg.push(`${added} ajouté(s)`);
+  if(updated) msg.push(`${updated} mis à jour`);
+  if(removed.length) msg.push(`⚠️ ${removed.length} match(s) en attente absent(s) du fichier (non supprimé(s))`);
+  if(msg.length) alert('✅ Import : '+msg.join('\n'));
+  return result;
+})}
           onCorrect={m=>updM(ms=>ms.map(x=>x.id===m.id?m:x))}/>
         }
         {tab==='scorer'&&<ScorerTab matches={data.matches} settings={data.settings}
           onAddGame={(id,p)=>updM(ms=>ms.map(m=>m.id===id?addGame(m,p,data.settings):m))}
           onUndo={id=>updM(ms=>ms.map(m=>m.id===id?undoGame(m):m))}
           onServer={(id,sv)=>updM(ms=>ms.map(m=>m.id===id?{...m,server:sv}:m))}
-          onSetStatus={(id,st)=>updM(ms=>ms.map(m=>m.id===id?{...m,status:st,endedAt:st==='finished'?Date.now():m.endedAt}:m))}
+          onSetStatus={(id,st,extra)=>updM(ms=>ms.map(m=>m.id===id?{...m,status:st,...(extra||{}),endedAt:st==='finished'?Date.now():m.endedAt}:m))}
+          onPause={id=>updM(ms=>ms.map(m=>m.id===id?pauseMatch(m):m))}
+          onResume={id=>updM(ms=>ms.map(m=>m.id===id?resumeMatch(m):m))}
+          onWO={(id,winner)=>updM(ms=>ms.map(m=>m.id===id?{...m,status:'finished',winner,wo:true,endedAt:Date.now()}:m))}
+          onAddPoint={(id,p)=>updM(ms=>ms.map(m=>m.id===id?addPoint(m,p,data.settings):m))}
+          onUndoPoint={id=>updM(ms=>ms.map(m=>m.id===id?undoPoint(m):m))}
+          onToggleMode={(id,mode)=>updM(ms=>ms.map(m=>{
+            if(m.id!==id)return m;
+            if(mode.startsWith('_serve_')){const v=mode.slice(7);return{...m,_pendingServe:m._pendingServe===v?null:v};}
+            if(mode.startsWith('_type_')){const v=mode.slice(6);return{...m,_pendingType:m._pendingType===v?null:v};}
+            return{...m,scoringMode:mode,gameScore:[0,0]};
+          }))}
           onStartWithServer={handleStartWithServer}/>
         }
+        {tab==='stats'&&<StatsTab matches={data.matches} settings={data.settings}/>}
         {tab==='settings'&&<SettingsTab settings={data.settings}
           onSave={s=>update({...data,settings:s})}
           fbConfig={fbConfig}
@@ -1410,7 +3288,7 @@ function App(){
           fbStatus={fbStatus}/>
         }
       </div>
-      {srvModal&&<ServerSelectModal match={srvModal} onStart={confirmServer} onClose={()=>setSrvModal(null)}/>}
+      {srvModal&&<ServerSelectModal match={srvModal} settings={data.settings} onStart={confirmServer} onClose={()=>setSrvModal(null)}/>}
     </div>
   );
 }
